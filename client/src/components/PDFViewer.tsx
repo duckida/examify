@@ -3,6 +3,7 @@ import type { PDFInfo, PageAnnotations, MarkResult, DrawingPath, TextBoxData } f
 import DrawingCanvas from './DrawingCanvas';
 import TextBoxes from './TextBoxes';
 import MarkPanel from './MarkPanel';
+import MarkSchemeModal from './MarkSchemeModal';
 
 const pdfjsWorker = (async () => {
   const { GlobalWorkerOptions } = await import('pdfjs-dist');
@@ -59,10 +60,9 @@ export default function PDFViewer({
   const [drawColor, setDrawColor] = useState('#ef4444');
   const [zoom, setZoom] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMsModal, setShowMsModal] = useState(false);
   const [pdfDocVersion, setPdfDocVersion] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const msInputRef = useRef<HTMLInputElement>(null);
-  const msUrlRef = useRef<HTMLInputElement>(null);
   const pdfDocRef = useRef<any>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -166,52 +166,10 @@ export default function PDFViewer({
     onAnnotationsChange({ ...annotations, textBoxes });
   }, [annotations, onAnnotationsChange]);
 
-  function arrayBufferToBase64(buf: ArrayBuffer): string {
-    const bytes = new Uint8Array(buf);
-    let binary = '';
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-    return btoa(binary);
-  }
-
-  const loadMarkScheme = useCallback(async (buffer: ArrayBuffer, filename: string) => {
-    const blob = new Blob([buffer], { type: 'application/pdf' });
-    const blobUrl = URL.createObjectURL(blob);
-    const base64 = arrayBufferToBase64(buffer);
-
-    const { getPDFPageCount } = await import('../utils/pdf');
-    const pages = await getPDFPageCount(blobUrl);
-
-    const info: PDFInfo = { id: filename, filename, url: blobUrl, data: base64 };
-    onMarkSchemeUpload(info, pages);
+  const handleMsModalUpload = useCallback((info: PDFInfo, totalPages: number) => {
+    onMarkSchemeUpload(info, totalPages);
+    setShowMsModal(false);
   }, [onMarkSchemeUpload]);
-
-  const handleMarkSchemeFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const buffer = await file.arrayBuffer();
-      await loadMarkScheme(buffer, file.name);
-    } catch (err) {
-      console.error('Failed to load mark scheme:', err);
-    }
-  }, [loadMarkScheme]);
-
-  const handleMarkSchemeUrl = useCallback(async () => {
-    const url = msUrlRef.current?.value?.trim();
-    if (!url) return;
-    try {
-      const res = await fetch(`/api/fetch-pdf?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('Failed to fetch PDF');
-      const buffer = await res.arrayBuffer();
-      const filename = url.split('/').pop() || 'markscheme.pdf';
-      await loadMarkScheme(buffer, filename);
-    } catch (err) {
-      console.error('Failed to load mark scheme from URL:', err);
-    }
-  }, [loadMarkScheme]);
 
   return (
     <div className="pdf-viewer-layout">
@@ -304,60 +262,20 @@ export default function PDFViewer({
 
           <div className="toolbar-divider" />
 
-          {!markSchemeInfo ? (
-            <div className="ms-input-group">
-              <button
-                className="btn-ms-upload"
-                onClick={() => msInputRef.current?.click()}
-                title="Upload mark scheme"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="12" y1="18" x2="12" y2="12" />
-                  <line x1="9" y1="15" x2="12" y2="12" />
-                  <line x1="15" y1="15" x2="12" y2="12" />
-                </svg>
-                MS
-              </button>
-              <input
-                ref={msUrlRef}
-                type="text"
-                className="ms-url-input"
-                placeholder="or MS URL"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleMarkSchemeUrl(); }}
-              />
-              <button className="btn-ms-url" onClick={handleMarkSchemeUrl} title="Load mark scheme from URL">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 4v6h-6" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div className="ms-loaded-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              MS ({markSchemeTotalPages}p)
-              <button
-                className="ms-replace"
-                onClick={() => msInputRef.current?.click()}
-                title="Replace mark scheme"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 4v6h-6" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-              </button>
-            </div>
-          )}
-          <input
-            ref={msInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={handleMarkSchemeFile}
-            hidden
-          />
+          <button
+            className={`btn-ms-upload ${markSchemeInfo ? 'active' : ''}`}
+            onClick={() => setShowMsModal(true)}
+            title={markSchemeInfo ? 'Replace mark scheme' : 'Upload mark scheme'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="12" y2="12" />
+              <line x1="15" y1="15" x2="12" y2="12" />
+            </svg>
+            {markSchemeInfo ? `MS (${markSchemeTotalPages}p)` : 'MS'}
+          </button>
 
           <div className="color-picker">
             <input
@@ -517,6 +435,13 @@ export default function PDFViewer({
           drawings={annotations.drawings}
         />
       </div>
+
+      {showMsModal && (
+        <MarkSchemeModal
+          onUpload={handleMsModalUpload}
+          onClose={() => setShowMsModal(false)}
+        />
+      )}
     </div>
   );
 }
