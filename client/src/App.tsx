@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { PDFInfo, PageAnnotations, MarkResult, MarkRecord } from './types';
 import UploadPage from './components/UploadPage';
 import PDFViewer from './components/PDFViewer';
@@ -14,8 +14,14 @@ export default function App() {
   const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+  const msUrlRef = useRef<string | null>(null);
 
   const handleUploadComplete = useCallback((info: PDFInfo, pages: number) => {
+    if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    pdfUrlRef.current = info.url;
+    msUrlRef.current = null;
     setPDFInfo(info);
     setTotalPages(pages);
     setCurrentPage(1);
@@ -26,6 +32,10 @@ export default function App() {
   }, []);
 
   const handleReset = useCallback(() => {
+    if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    pdfUrlRef.current = null;
+    msUrlRef.current = null;
     setPDFInfo(null);
     setMarkSchemeInfo(null);
     setMarkSchemeTotalPages(0);
@@ -41,6 +51,8 @@ export default function App() {
   }, []);
 
   const handleMarkSchemeUpload = useCallback((info: PDFInfo, totalPages: number) => {
+    if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    msUrlRef.current = info.url;
     setMarkSchemeInfo(info);
     setMarkSchemeTotalPages(totalPages);
   }, []);

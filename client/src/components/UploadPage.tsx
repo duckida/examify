@@ -19,24 +19,22 @@ export default function UploadPage({ onUploadComplete }: Props) {
     setUploading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('pdf', file);
-
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
-      const info: PDFInfo = await res.json();
+      const buffer = await file.arrayBuffer();
+      const blob = new Blob([buffer], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
 
-      // Load PDF to determine page count
-      const pdfRes = await fetch(info.url);
-      const buffer = await pdfRes.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      onUploadComplete(info, pdf.numPages);
+      const numPages = pdf.numPages;
+      pdf.destroy();
+
+      const info: PDFInfo = { id: file.name, filename: file.name, url: blobUrl };
+      onUploadComplete(info, numPages);
     } catch (e: any) {
-      setError(e.message || 'Failed to upload PDF');
+      setError(e.message || 'Failed to load PDF');
     } finally {
       setUploading(false);
     }

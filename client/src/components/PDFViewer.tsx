@@ -40,6 +40,7 @@ export default function PDFViewer({
   const [zoom, setZoom] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const msInputRef = useRef<HTMLInputElement>(null);
+  const pdfDocRef = useRef<any>(null);
 
   const zoomIn = () => setZoom(z => Math.min(z + ZOOM_STEP, ZOOM_MAX));
   const zoomOut = () => setZoom(z => Math.max(z - ZOOM_STEP, ZOOM_MIN));
@@ -57,6 +58,14 @@ export default function PDFViewer({
         const res = await fetch(pdfInfo.url);
         const buffer = await res.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        if (cancelled) {
+          pdf.destroy();
+          return;
+        }
+
+        if (pdfDocRef.current) pdfDocRef.current.destroy();
+        pdfDocRef.current = pdf;
+
         const page = await pdf.getPage(currentPage);
 
         const container = containerRef.current;
@@ -81,7 +90,13 @@ export default function PDFViewer({
         console.error('Failed to render PDF page:', err);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+    };
   }, [pdfInfo.url, currentPage]);
 
   const handleDrawingChange = useCallback((drawings: DrawingPath[]) => {
@@ -96,19 +111,18 @@ export default function PDFViewer({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('pdf', file);
-
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
-      const info: PDFInfo = await res.json();
+      const buffer = await file.arrayBuffer();
+      const blob = new Blob([buffer], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
 
       const { getPDFPageCount } = await import('../utils/pdf');
-      const pages = await getPDFPageCount(info.url);
+      const pages = await getPDFPageCount(blobUrl);
+
+      const info: PDFInfo = { id: file.name, filename: file.name, url: blobUrl };
       onMarkSchemeUpload(info, pages);
     } catch (err) {
-      console.error('Failed to upload mark scheme:', err);
+      console.error('Failed to load mark scheme:', err);
     }
   }, [onMarkSchemeUpload]);
 
