@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { MarkResult, PDFInfo, DrawingPath } from '../types';
+import type { MarkResult, PDFInfo, DrawingPath, TextBoxData } from '../types';
 
 interface Props {
   onMark: (imageBase64: string, questionContext?: string) => void;
@@ -15,6 +15,7 @@ interface Props {
   pdfData?: string;
   pageDimensions: { width: number; height: number };
   drawings: DrawingPath[];
+  textBoxes: TextBoxData[];
 }
 
 export default function MarkPanel({
@@ -22,7 +23,7 @@ export default function MarkPanel({
   currentPage, hasAnnotations,
   markSchemeInfo, markSchemeTotalPages,
   parsedMarkSchemeText, parsingMarkScheme,
-  pdfData, pageDimensions, drawings,
+  pdfData, pageDimensions, drawings, textBoxes,
 }: Props) {
   const [context, setContext] = useState('');
   const [capturing, setCapturing] = useState(false);
@@ -75,6 +76,31 @@ export default function MarkPanel({
         ctx.stroke();
       }
 
+      // Render text boxes onto the image
+      for (const box of textBoxes) {
+        if (!box.text.trim()) continue;
+        const bx = box.x * scale;
+        const by = box.y * scale;
+        const bw = box.width * scale;
+        const bh = box.height * scale;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.strokeStyle = '#4f46e5';
+        ctx.lineWidth = 2 * scale;
+        ctx.strokeRect(bx, by, bw, bh);
+        ctx.fillStyle = box.color;
+        ctx.font = `${box.fontSize * scale}px sans-serif`;
+        ctx.textBaseline = 'top';
+        const pad = 4 * scale;
+        const lineH = box.fontSize * scale * 1.4;
+        const lines = box.text.split('\n');
+        let lineY = by + pad;
+        for (const line of lines) {
+          ctx.fillText(line, bx + pad, lineY);
+          lineY += lineH;
+        }
+      }
+
       const base64 = canvas.toDataURL('image/png').split(',')[1];
 
       setCapturing(false);
@@ -83,7 +109,7 @@ export default function MarkPanel({
       setCapturing(false);
       console.error('Capture failed:', err);
     }
-  }, [pdfData, currentPage, pageDimensions, drawings, onMark, context]);
+  }, [pdfData, currentPage, pageDimensions, drawings, textBoxes, onMark, context]);
 
   const isLoading = marking || capturing || parsingMarkScheme;
 

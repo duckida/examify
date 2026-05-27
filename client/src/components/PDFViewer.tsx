@@ -433,6 +433,7 @@ export default function PDFViewer({
           pdfData={pdfInfo.data}
           pageDimensions={pageDimensions}
           drawings={annotations.drawings}
+          textBoxes={annotations.textBoxes}
         />
       </div>
 

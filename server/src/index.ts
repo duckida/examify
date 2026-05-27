@@ -132,11 +132,11 @@ app.post('/api/mark', async (req, res) => {
     }
 
     if (pageText) {
-      userContent.push({ type: 'text' as const, text: `Student's answer text (extracted from PDF):\n${pageText}` });
+      userContent.push({ type: 'text' as const, text: `Exam paper text (extracted from PDF):\n${pageText}` });
     }
 
     if (textBoxesText) {
-      userContent.push({ type: 'text' as const, text: `Student's typed annotations (from text boxes):\n${textBoxesText}` });
+      userContent.push({ type: 'text' as const, text: `Student's answer (typed in text boxes overlaid on the page):\n${textBoxesText}` });
     }
 
     userContent.push(
@@ -158,7 +158,8 @@ app.post('/api/mark', async (req, res) => {
     const result = await generateText({
       model,
       system: `You are an expert examiner marking student answers against official mark schemes.
-The student's answer is provided as extracted text, typed annotations (text boxes), and a page image. Use all sources to assess the answer.
+The student wrote their answers in text boxes overlaid on the exam paper page. The text from those text boxes is provided below. Treat this text as the student's official answer.
+The page image also shows these text boxes rendered visually. Use both the text and the image to assess the answer.
 The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
 Return JSON only, no markdown formatting:
 - score (number): marks awarded
