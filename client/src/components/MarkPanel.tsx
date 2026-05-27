@@ -2,7 +2,7 @@ import { useState, useCallback, type RefObject } from 'react';
 import type { MarkResult, PDFInfo } from '../types';
 
 interface Props {
-  onMark: (imageBase64: string, questionContext?: string, markSchemePdf?: string) => void;
+  onMark: (imageBase64: string, questionContext?: string) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
@@ -11,12 +11,15 @@ interface Props {
   hasAnnotations: boolean;
   markSchemeInfo: PDFInfo | null;
   markSchemeTotalPages: number;
+  parsedMarkSchemeText: string | null;
+  parsingMarkScheme: boolean;
 }
 
 export default function MarkPanel({
   onMark, marking, markError, markResult, pageRef,
   currentPage, hasAnnotations,
   markSchemeInfo, markSchemeTotalPages,
+  parsedMarkSchemeText, parsingMarkScheme,
 }: Props) {
   const [context, setContext] = useState('');
   const [capturing, setCapturing] = useState(false);
@@ -35,21 +38,15 @@ export default function MarkPanel({
       });
       const base64 = canvas.toDataURL('image/png').split(',')[1];
 
-      // If mark scheme is loaded, send the raw PDF data as a file input
-      let markSchemePdf: string | undefined;
-      if (markSchemeInfo?.data) {
-        markSchemePdf = markSchemeInfo.data;
-      }
-
       setCapturing(false);
-      onMark(base64, context || undefined, markSchemePdf);
+      onMark(base64, context || undefined);
     } catch (err: any) {
       setCapturing(false);
       console.error('Capture failed:', err);
     }
-  }, [pageRef, onMark, context, markSchemeInfo]);
+  }, [pageRef, onMark, context]);
 
-  const isLoading = marking || capturing;
+  const isLoading = marking || capturing || parsingMarkScheme;
 
   return (
     <div className="mark-panel">
@@ -68,7 +65,7 @@ export default function MarkPanel({
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            Mark scheme loaded ({markSchemeTotalPages} pages)
+            {parsingMarkScheme ? 'Parsing mark scheme...' : parsedMarkSchemeText ? 'Mark scheme loaded & parsed' : 'Mark scheme loaded'}
           </div>
         )}
 

@@ -20,6 +20,17 @@ export default function App() {
   const [hackClubApiKey, setHackClubApiKey] = useState(
     () => localStorage.getItem('hackClubApiKey') || '',
   );
+
+  const [markingModel, setMarkingModel] = useState(
+    () => localStorage.getItem('markingModel') || '',
+  );
+  const [parsingModel, setParsingModel] = useState(
+    () => localStorage.getItem('parsingModel') || '',
+  );
+
+  const [parsedMarkSchemeText, setParsedMarkSchemeText] = useState<string | null>(null);
+  const [parsingMarkScheme, setParsingMarkScheme] = useState(false);
+
   const pdfUrlRef = useRef<string | null>(null);
   const msUrlRef = useRef<string | null>(null);
 
@@ -33,6 +44,7 @@ export default function App() {
     setCurrentPage(1);
     setMarkSchemeInfo(null);
     setMarkSchemeTotalPages(0);
+    setParsedMarkSchemeText(null);
     setAnnotations({});
     setMarks([]);
   }, []);
@@ -45,6 +57,7 @@ export default function App() {
     setPDFInfo(null);
     setMarkSchemeInfo(null);
     setMarkSchemeTotalPages(0);
+    setParsedMarkSchemeText(null);
     setCurrentPage(1);
     setTotalPages(0);
     setAnnotations({});
@@ -56,15 +69,43 @@ export default function App() {
     setAnnotations(prev => ({ ...prev, [page]: ann }));
   }, []);
 
-  const handleMarkSchemeUpload = useCallback((info: PDFInfo, totalPages: number) => {
+  const handleMarkSchemeUpload = useCallback(async (info: PDFInfo, totalPages: number) => {
     if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
     msUrlRef.current = info.url;
     setMarkSchemeInfo(info);
     setMarkSchemeTotalPages(totalPages);
-  }, []);
+
+    if (info.data) {
+      setParsingMarkScheme(true);
+      setParsedMarkSchemeText(null);
+      try {
+        const res = await fetch('/api/parse-mark-scheme', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            markSchemePdf: info.data,
+            aiProvider,
+            hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
+            model: parsingModel || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setParsedMarkSchemeText(data.text);
+        } else {
+          const err = await res.json();
+          console.error('Failed to parse mark scheme:', err.error);
+        }
+      } catch (err) {
+        console.error('Failed to parse mark scheme:', err);
+      } finally {
+        setParsingMarkScheme(false);
+      }
+    }
+  }, [aiProvider, hackClubApiKey, parsingModel]);
 
   const handleMark = useCallback(
-    async (imageBase64: string, questionContext?: string, markSchemePdf?: string) => {
+    async (imageBase64: string, questionContext?: string, pageText?: string) => {
       setMarking(true);
       setMarkError(null);
       try {
@@ -73,10 +114,12 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             image: imageBase64,
+            pageText,
             questionContext,
-            markSchemePdf,
+            parsedMarkSchemeText,
             aiProvider,
             hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
+            markingModel: markingModel || undefined,
           }),
         });
         if (!res.ok) {
@@ -92,7 +135,7 @@ export default function App() {
         setMarking(false);
       }
     },
-    [currentPage, aiProvider, hackClubApiKey],
+    [currentPage, aiProvider, hackClubApiKey, parsedMarkSchemeText, markingModel],
   );
 
   const currentMark = marks.find(m => m.pageNumber === currentPage)?.result ?? null;
@@ -114,7 +157,7 @@ export default function App() {
       onAnnotationsChange={(ann) => updateAnnotations(currentPage, ann)}
       onMark={handleMark}
       onReset={handleReset}
-      marking={marking}
+      marking={marking || parsingMarkScheme}
       markError={markError}
       markResult={currentMark}
       aiProvider={aiProvider}
@@ -127,6 +170,18 @@ export default function App() {
         setHackClubApiKey(key);
         localStorage.setItem('hackClubApiKey', key);
       }}
+      markingModel={markingModel}
+      parsingModel={parsingModel}
+      onMarkingModelChange={(m) => {
+        setMarkingModel(m);
+        localStorage.setItem('markingModel', m);
+      }}
+      onParsingModelChange={(m) => {
+        setParsingModel(m);
+        localStorage.setItem('parsingModel', m);
+      }}
+      parsedMarkSchemeText={parsedMarkSchemeText}
+      parsingMarkScheme={parsingMarkScheme}
     />
   );
 }

@@ -20,7 +20,7 @@ interface Props {
   onPageChange: (page: number) => void;
   annotations: PageAnnotations;
   onAnnotationsChange: (ann: PageAnnotations) => void;
-  onMark: (imageBase64: string, questionContext?: string, markSchemePdf?: string) => void;
+  onMark: (imageBase64: string, questionContext?: string, pageText?: string) => void;
   onReset: () => void;
   marking: boolean;
   markError: string | null;
@@ -29,6 +29,12 @@ interface Props {
   hackClubApiKey: string;
   onAiProviderChange: (provider: 'free' | 'hackclub') => void;
   onHackClubApiKeyChange: (key: string) => void;
+  markingModel: string;
+  parsingModel: string;
+  onMarkingModelChange: (model: string) => void;
+  onParsingModelChange: (model: string) => void;
+  parsedMarkSchemeText: string | null;
+  parsingMarkScheme: boolean;
 }
 
 type ToolMode = 'draw' | 'text' | 'select';
@@ -43,9 +49,12 @@ export default function PDFViewer({
   annotations, onAnnotationsChange,
   onMark, onReset, marking, markError, markResult,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
+  markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
+  parsedMarkSchemeText, parsingMarkScheme,
 }: Props) {
   const [pageImage, setPageImage] = useState<string | null>(null);
   const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
+  const [pageText, setPageText] = useState('');
   const [toolMode, setToolMode] = useState<ToolMode>('draw');
   const [drawColor, setDrawColor] = useState('#ef4444');
   const [zoom, setZoom] = useState(1);
@@ -92,7 +101,7 @@ export default function PDFViewer({
     };
   }, [pdfInfo.url]);
 
-  // Render the current PDF page to a canvas image
+  // Render the current PDF page to a canvas image and extract text
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -116,9 +125,19 @@ export default function PDFViewer({
         ctx.scale(2, 2);
         await page.render({ canvasContext: ctx, viewport }).promise;
 
+        // Extract text content from the page
+        let extractedText = '';
+        try {
+          const textContent = await page.getTextContent();
+          extractedText = textContent.items.map((item: any) => item.str).join(' ');
+        } catch (textErr) {
+          console.error('Failed to extract page text:', textErr);
+        }
+
         if (!cancelled) {
           setPageImage(canvas.toDataURL());
           setPageDimensions({ width: viewport.width, height: viewport.height });
+          setPageText(extractedText);
         }
       } catch (err) {
         console.error('Failed to render PDF page:', err);
@@ -396,6 +415,32 @@ export default function PDFViewer({
                     />
                   </div>
                 )}
+
+                <div className="settings-divider" />
+
+                <div className="settings-header">Models</div>
+                <div className="settings-field">
+                  <label className="settings-field-label">Marking model</label>
+                  <input
+                    type="text"
+                    className="settings-key-input"
+                    placeholder={aiProvider === 'hackclub' ? 'qwen/qwen3.6-flash' : 'gemini-3.1-flash-lite'}
+                    value={markingModel}
+                    onChange={(e) => onMarkingModelChange(e.target.value)}
+                  />
+                  <span className="settings-field-desc">Model used for marking answers</span>
+                </div>
+                <div className="settings-field">
+                  <label className="settings-field-label">Parsing model</label>
+                  <input
+                    type="text"
+                    className="settings-key-input"
+                    placeholder={aiProvider === 'hackclub' ? 'qwen/qwen3.6-flash' : 'gemini-3.1-flash-lite'}
+                    value={parsingModel}
+                    onChange={(e) => onParsingModelChange(e.target.value)}
+                  />
+                  <span className="settings-field-desc">Model used for extracting mark scheme text</span>
+                </div>
               </div>
             )}
           </div>
@@ -451,7 +496,7 @@ export default function PDFViewer({
         </div>
 
         <MarkPanel
-          onMark={(imageBase64, context, markSchemePdf) => onMark(imageBase64, context, markSchemePdf)}
+          onMark={(imageBase64, context) => onMark(imageBase64, context, pageText)}
           marking={marking}
           markError={markError}
           markResult={markResult}
@@ -460,6 +505,8 @@ export default function PDFViewer({
           hasAnnotations={annotations.drawings.length > 0 || annotations.textBoxes.length > 0}
           markSchemeInfo={markSchemeInfo}
           markSchemeTotalPages={markSchemeTotalPages}
+          parsedMarkSchemeText={parsedMarkSchemeText}
+          parsingMarkScheme={parsingMarkScheme}
         />
       </div>
     </div>

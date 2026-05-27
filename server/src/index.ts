@@ -33,20 +33,64 @@ app.get('/api/fetch-pdf', async (req, res) => {
   }
 });
 
-function getModel(provider?: string, hackClubApiKey?: string) {
+function getModel(provider?: string, hackClubApiKey?: string, modelName?: string) {
   if (provider === 'hackclub' && hackClubApiKey) {
     const hackclub = createOpenRouter({
       apiKey: hackClubApiKey,
       baseUrl: 'https://ai.hackclub.com/proxy/v1',
     });
-    return hackclub(process.env.LLM_MODEL || 'qwen/qwen3.6-flash');
+    return hackclub(modelName || process.env.LLM_MODEL || 'qwen/qwen3.6-flash');
   }
-  return google(process.env.LLM_MODEL || 'gemini-3.1-flash-lite');
+  return google(modelName || process.env.LLM_MODEL || 'gemini-3.1-flash-lite');
 }
+
+app.post('/api/parse-mark-scheme', async (req, res) => {
+  try {
+    const { markSchemePdf, aiProvider, hackClubApiKey, model } = req.body;
+    if (!markSchemePdf) {
+      res.status(400).json({ error: 'No mark scheme PDF provided' });
+      return;
+    }
+
+    const usingHackClub = aiProvider === 'hackclub' && hackClubApiKey;
+    if (!usingHackClub && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      res.status(500).json({ error: 'No AI API key configured on the server.' });
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    const llmModel = getModel(aiProvider, hackClubApiKey, model);
+
+    const result = await generateText({
+      model: llmModel,
+      system: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text' as const, text: 'Extract all text from this mark scheme PDF.' },
+            { type: 'file' as const, data: Buffer.from(markSchemePdf, 'base64'), mediaType: 'application/pdf' },
+          ],
+        },
+      ],
+      maxOutputTokens: 8000,
+      abortSignal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    res.json({ text: result.text.trim() });
+  } catch (error: any) {
+    console.error('Mark scheme parsing error:', error);
+    const message = error.name === 'AbortError' ? 'Mark scheme parsing timed out' : (error.message || 'Failed to parse mark scheme');
+    res.status(500).json({ error: message });
+  }
+});
 
 app.post('/api/mark', async (req, res) => {
   try {
-    const { image, markSchemePdf, questionContext, aiProvider, hackClubApiKey } = req.body;
+    const { image, pageText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel } = req.body;
     if (!image) {
       res.status(400).json({ error: 'No image provided' });
       return;
@@ -58,27 +102,37 @@ app.post('/api/mark', async (req, res) => {
       return;
     }
 
-    const userContent: any[] = [
-      { type: 'text' as const, text: questionContext || 'Mark this exam answer.' },
-      { type: 'image' as const, image: `data:image/png;base64,${image}` },
-    ];
+    const userContent: any[] = [];
 
-    if (markSchemePdf) {
+    if (questionContext) {
+      userContent.push({ type: 'text' as const, text: `Question context: ${questionContext}` });
+    }
+
+    if (pageText) {
+      userContent.push({ type: 'text' as const, text: `Student's answer text (extracted from PDF):\n${pageText}` });
+    }
+
+    userContent.push(
+      { type: 'text' as const, text: 'Here is the student\'s answer page as an image (including any annotations):' },
+      { type: 'image' as const, image: `data:image/png;base64,${image}` },
+    );
+
+    if (parsedMarkSchemeText) {
       userContent.push(
-        { type: 'text' as const, text: 'Here is the mark scheme PDF. Extract all the text from it and use it to assess the student\'s answer against each criterion.' },
-        { type: 'file' as const, data: Buffer.from(markSchemePdf, 'base64'), mediaType: 'application/pdf' },
+        { type: 'text' as const, text: `Mark scheme:\n${parsedMarkSchemeText}` },
       );
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const model = getModel(aiProvider, hackClubApiKey);
+    const model = getModel(aiProvider, hackClubApiKey, markingModel);
 
     const result = await generateText({
       model,
       system: `You are an expert examiner marking student answers against official mark schemes.
-The mark scheme PDF will be provided as a file. Extract all text from it and use it to assess the student's answer.
+The student's answer is provided as both extracted text and a page image. Use both sources to assess the answer.
+The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
 Return JSON only, no markdown formatting:
 - score (number): marks awarded
 - totalMarks (number): total marks available
