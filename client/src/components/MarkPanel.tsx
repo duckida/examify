@@ -2,7 +2,7 @@ import { useState, useCallback, type RefObject } from 'react';
 import type { MarkResult, PDFInfo } from '../types';
 
 interface Props {
-  onMark: (imageBase64: string, questionContext?: string, markSchemeImages?: string[]) => void;
+  onMark: (imageBase64: string, questionContext?: string, markSchemePdf?: string) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
@@ -35,30 +35,19 @@ export default function MarkPanel({
       });
       const base64 = canvas.toDataURL('image/png').split(',')[1];
 
-      // If mark scheme is loaded, render ALL pages
-      let msImages: string[] | undefined;
-      if (markSchemeInfo && markSchemeTotalPages > 0) {
-        msImages = [];
-        const { renderPDFPageToBase64 } = await import('../utils/pdf');
-        const maxWidth = 800;
-        for (let p = 1; p <= markSchemeTotalPages; p++) {
-          try {
-            const img = await renderPDFPageToBase64(markSchemeInfo.url, p, maxWidth);
-            msImages.push(img);
-          } catch (err) {
-            console.error(`Failed to render mark scheme page ${p}:`, err);
-          }
-        }
-        if (msImages.length === 0) msImages = undefined;
+      // If mark scheme is loaded, send the raw PDF data as a file input
+      let markSchemePdf: string | undefined;
+      if (markSchemeInfo?.data) {
+        markSchemePdf = markSchemeInfo.data;
       }
 
       setCapturing(false);
-      onMark(base64, context || undefined, msImages);
+      onMark(base64, context || undefined, markSchemePdf);
     } catch (err: any) {
       setCapturing(false);
       console.error('Capture failed:', err);
     }
-  }, [pageRef, onMark, context, markSchemeInfo, markSchemeTotalPages]);
+  }, [pageRef, onMark, context, markSchemeInfo]);
 
   const isLoading = marking || capturing;
 

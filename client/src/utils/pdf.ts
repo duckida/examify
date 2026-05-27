@@ -16,30 +16,4 @@ export async function getPDFPageCount(url: string): Promise<number> {
   return numPages;
 }
 
-export async function renderPDFPageToBase64(
-  url: string,
-  pageNum: number,
-  maxWidth: number,
-): Promise<string> {
-  await pdfjsWorkerPromise;
-  const pdfjsLib = await import('pdfjs-dist');
 
-  const res = await fetch(url);
-  const buffer = await res.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const page = await pdf.getPage(pageNum);
-  const viewport = page.getViewport({ scale: 1 });
-  const scale = maxWidth / viewport.width;
-  const scaledViewport = page.getViewport({ scale });
-
-  const canvas = document.createElement('canvas');
-  canvas.width = scaledViewport.width * 2;
-  canvas.height = scaledViewport.height * 2;
-  const ctx = canvas.getContext('2d')!;
-  ctx.scale(2, 2);
-  await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-
-  const dataUrl = canvas.toDataURL('image/png').split(',')[1];
-  pdf.destroy();
-  return dataUrl;
-}

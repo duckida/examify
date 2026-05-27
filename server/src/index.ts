@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
 import { generateText } from 'ai';
 
@@ -32,45 +33,52 @@ app.get('/api/fetch-pdf', async (req, res) => {
   }
 });
 
+function getModel(provider?: string, hackClubApiKey?: string) {
+  if (provider === 'hackclub' && hackClubApiKey) {
+    const hackclub = createOpenRouter({
+      apiKey: hackClubApiKey,
+      baseUrl: 'https://ai.hackclub.com/proxy/v1',
+    });
+    return hackclub(process.env.LLM_MODEL || 'qwen/qwen3.6-flash');
+  }
+  return google(process.env.LLM_MODEL || 'gemini-3.1-flash-lite');
+}
+
 app.post('/api/mark', async (req, res) => {
   try {
-    const { image, markSchemeImages, markSchemeImage, questionContext } = req.body;
+    const { image, markSchemePdf, questionContext, aiProvider, hackClubApiKey } = req.body;
     if (!image) {
       res.status(400).json({ error: 'No image provided' });
       return;
     }
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-      res.status(500).json({ error: 'GOOGLE_GENERATIVE_AI_API_KEY not set on server' });
+
+    const usingHackClub = aiProvider === 'hackclub' && hackClubApiKey;
+    if (!usingHackClub && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      res.status(500).json({ error: 'No AI API key configured on the server. Select "Free endpoint" or provide a Hack Club AI API key.' });
       return;
     }
-
-    const images = markSchemeImages || (markSchemeImage ? [markSchemeImage] : []);
 
     const userContent: any[] = [
       { type: 'text' as const, text: questionContext || 'Mark this exam answer.' },
       { type: 'image' as const, image: `data:image/png;base64,${image}` },
     ];
 
-    if (images.length > 0) {
+    if (markSchemePdf) {
       userContent.push(
-        { type: 'text' as const, text: `Here is the full mark scheme (${images.length} page${images.length > 1 ? 's' : ''}). Use it to assess the student's answer against each criterion.` },
+        { type: 'text' as const, text: 'Here is the mark scheme PDF. Extract all the text from it and use it to assess the student\'s answer against each criterion.' },
+        { type: 'file' as const, data: Buffer.from(markSchemePdf, 'base64'), mediaType: 'application/pdf' },
       );
-      for (const msImg of images) {
-        userContent.push(
-          { type: 'image' as const, image: `data:image/png;base64,${msImg}` },
-        );
-      }
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const model = google(process.env.LLM_MODEL || 'gemini-3.1-flash-lite');
+    const model = getModel(aiProvider, hackClubApiKey);
 
     const result = await generateText({
       model,
       system: `You are an expert examiner marking student answers against official mark schemes.
-Analyze the student's answer using the full mark scheme provided.
+The mark scheme PDF will be provided as a file. Extract all text from it and use it to assess the student's answer.
 Return JSON only, no markdown formatting:
 - score (number): marks awarded
 - totalMarks (number): total marks available
@@ -79,11 +87,15 @@ Return JSON only, no markdown formatting:
       messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 2000,
       abortSignal: controller.signal,
-      providerOptions: {
-        google: {
-          thinkingConfig: { thinkingLevel: 'low' },
-        } satisfies GoogleLanguageModelOptions,
-      },
+      ...(usingHackClub
+        ? {}
+        : {
+            providerOptions: {
+              google: {
+                thinkingConfig: { thinkingLevel: 'low' },
+              } satisfies GoogleLanguageModelOptions,
+            },
+          }),
     });
 
     clearTimeout(timeout);

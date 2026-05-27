@@ -2,6 +2,7 @@ export interface PDFInfo {
   id: string;
   filename: string;
   url: string;
+  data?: string; // base64 of the raw file content (for mark scheme PDFs)
 }
 
 export interface DrawingPath {

@@ -14,6 +14,12 @@ export default function App() {
   const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const [aiProvider, setAiProvider] = useState<'free' | 'hackclub'>(
+    () => (localStorage.getItem('aiProvider') as 'free' | 'hackclub') || 'free',
+  );
+  const [hackClubApiKey, setHackClubApiKey] = useState(
+    () => localStorage.getItem('hackClubApiKey') || '',
+  );
   const pdfUrlRef = useRef<string | null>(null);
   const msUrlRef = useRef<string | null>(null);
 
@@ -58,7 +64,7 @@ export default function App() {
   }, []);
 
   const handleMark = useCallback(
-    async (imageBase64: string, questionContext?: string, markSchemeImages?: string[]) => {
+    async (imageBase64: string, questionContext?: string, markSchemePdf?: string) => {
       setMarking(true);
       setMarkError(null);
       try {
@@ -68,7 +74,9 @@ export default function App() {
           body: JSON.stringify({
             image: imageBase64,
             questionContext,
-            markSchemeImages,
+            markSchemePdf,
+            aiProvider,
+            hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
           }),
         });
         if (!res.ok) {
@@ -84,7 +92,7 @@ export default function App() {
         setMarking(false);
       }
     },
-    [currentPage],
+    [currentPage, aiProvider, hackClubApiKey],
   );
 
   const currentMark = marks.find(m => m.pageNumber === currentPage)?.result ?? null;
@@ -109,6 +117,16 @@ export default function App() {
       marking={marking}
       markError={markError}
       markResult={currentMark}
+      aiProvider={aiProvider}
+      hackClubApiKey={hackClubApiKey}
+      onAiProviderChange={(p) => {
+        setAiProvider(p);
+        localStorage.setItem('aiProvider', p);
+      }}
+      onHackClubApiKeyChange={(key) => {
+        setHackClubApiKey(key);
+        localStorage.setItem('hackClubApiKey', key);
+      }}
     />
   );
 }
