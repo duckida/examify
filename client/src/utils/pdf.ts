@@ -1,7 +1,12 @@
-export async function getPDFPageCount(url: string): Promise<number> {
-  const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
+const pdfjsWorkerPromise = (async () => {
+  const { GlobalWorkerOptions } = await import('pdfjs-dist');
+  GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+})();
+
+export async function getPDFPageCount(url: string): Promise<number> {
+  await pdfjsWorkerPromise;
+  const pdfjsLib = await import('pdfjs-dist');
 
   const res = await fetch(url);
   const buffer = await res.arrayBuffer();
@@ -16,9 +21,8 @@ export async function renderPDFPageToBase64(
   pageNum: number,
   maxWidth: number,
 ): Promise<string> {
+  await pdfjsWorkerPromise;
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   const res = await fetch(url);
   const buffer = await res.arrayBuffer();

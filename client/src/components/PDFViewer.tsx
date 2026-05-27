@@ -4,6 +4,12 @@ import DrawingCanvas from './DrawingCanvas';
 import TextBoxes from './TextBoxes';
 import MarkPanel from './MarkPanel';
 
+const pdfjsWorker = (async () => {
+  const { GlobalWorkerOptions } = await import('pdfjs-dist');
+  GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+})();
+
 interface Props {
   pdfInfo: PDFInfo;
   markSchemeInfo: PDFInfo | null;
@@ -46,15 +52,13 @@ export default function PDFViewer({
   const zoomOut = () => setZoom(z => Math.max(z - ZOOM_STEP, ZOOM_MIN));
   const zoomReset = () => setZoom(1);
 
-  // Render the current PDF page to a canvas image
+  // Load PDF document when URL changes
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        await pdfjsWorker;
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
         const res = await fetch(pdfInfo.url);
         const buffer = await res.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -65,7 +69,27 @@ export default function PDFViewer({
 
         if (pdfDocRef.current) pdfDocRef.current.destroy();
         pdfDocRef.current = pdf;
+      } catch (err) {
+        console.error('Failed to load PDF:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+    };
+  }, [pdfInfo.url]);
 
+  // Render the current PDF page to a canvas image
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const pdf = pdfDocRef.current;
+      if (!pdf) return;
+
+      try {
         const page = await pdf.getPage(currentPage);
 
         const container = containerRef.current;
@@ -90,14 +114,8 @@ export default function PDFViewer({
         console.error('Failed to render PDF page:', err);
       }
     })();
-    return () => {
-      cancelled = true;
-      if (pdfDocRef.current) {
-        pdfDocRef.current.destroy();
-        pdfDocRef.current = null;
-      }
-    };
-  }, [pdfInfo.url, currentPage]);
+    return () => { cancelled = true; };
+  }, [currentPage]);
 
   const handleDrawingChange = useCallback((drawings: DrawingPath[]) => {
     onAnnotationsChange({ ...annotations, drawings });

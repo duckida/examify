@@ -12,6 +12,26 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+app.get('/api/fetch-pdf', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url || typeof url !== 'string') {
+      res.status(400).json({ error: 'URL parameter required' });
+      return;
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      res.status(502).json({ error: `Failed to fetch PDF: ${response.statusText}` });
+      return;
+    }
+    const buffer = await response.arrayBuffer();
+    res.set('Content-Type', 'application/pdf');
+    res.send(Buffer.from(buffer));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch PDF' });
+  }
+});
+
 app.post('/api/mark', async (req, res) => {
   try {
     const { image, markSchemeImages, markSchemeImage, questionContext } = req.body;

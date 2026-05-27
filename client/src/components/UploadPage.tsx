@@ -5,45 +5,90 @@ interface Props {
   onUploadComplete: (info: PDFInfo, totalPages: number) => void;
 }
 
+const pdfjsWorkerPromise = (async () => {
+  const { GlobalWorkerOptions } = await import('pdfjs-dist');
+  GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+})();
+
+async function getPDFPageCountFromBuffer(buffer: ArrayBuffer): Promise<number> {
+  await pdfjsWorkerPromise;
+  const pdfjsLib = await import('pdfjs-dist');
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const numPages = pdf.numPages;
+  pdf.destroy();
+  return numPages;
+}
+
 export default function UploadPage({ onUploadComplete }: Props) {
   const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Loading...');
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (file: File) => {
+  const loadPDFFromBuffer = async (buffer: ArrayBuffer, filename: string) => {
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+    const numPages = await getPDFPageCountFromBuffer(buffer);
+    const info: PDFInfo = { id: filename, filename, url: blobUrl };
+    onUploadComplete(info, numPages);
+  };
+
+  const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') {
       setError('Please upload a PDF file');
       return;
     }
-    setUploading(true);
+    setLoading(true);
+    setLoadingLabel('Loading PDF...');
     setError(null);
 
     try {
       const buffer = await file.arrayBuffer();
-      const blob = new Blob([buffer], { type: 'application/pdf' });
-      const blobUrl = URL.createObjectURL(blob);
-
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      const numPages = pdf.numPages;
-      pdf.destroy();
-
-      const info: PDFInfo = { id: file.name, filename: file.name, url: blobUrl };
-      onUploadComplete(info, numPages);
+      await loadPDFFromBuffer(buffer, file.name);
     } catch (e: any) {
       setError(e.message || 'Failed to load PDF');
     } finally {
-      setUploading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleURL = async () => {
+    const url = urlRef.current?.value?.trim();
+    if (!url) {
+      setError('Enter a PDF URL');
+      return;
+    }
+    setLoading(true);
+    setLoadingLabel('Downloading PDF...');
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/fetch-pdf?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to fetch PDF' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const buffer = await res.arrayBuffer();
+      const filename = url.split('/').pop() || 'document.pdf';
+      await loadPDFFromBuffer(buffer, filename);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load PDF from URL');
+    } finally {
+      setLoading(false);
     }
   };
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     const file = inputRef.current?.files?.[0];
-    if (file) handleUpload(file);
+    if (file) handleFile(file);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleURL();
   };
 
   return (
@@ -60,14 +105,14 @@ export default function UploadPage({ onUploadComplete }: Props) {
               e.preventDefault();
               setDragOver(false);
               const file = e.dataTransfer.files[0];
-              if (file) handleUpload(file);
+              if (file) handleFile(file);
             }}
             onClick={() => inputRef.current?.click()}
           >
-            {uploading ? (
+            {loading ? (
               <div className="uploading">
                 <div className="spinner" />
-                <p>Uploading...</p>
+                <p>{loadingLabel}</p>
               </div>
             ) : (
               <>
@@ -88,10 +133,27 @@ export default function UploadPage({ onUploadComplete }: Props) {
             accept=".pdf"
             onChange={() => {
               const file = inputRef.current?.files?.[0];
-              if (file) handleUpload(file);
+              if (file) handleFile(file);
             }}
             hidden
           />
+          <div className="url-input-row">
+            <div className="url-input-wrapper">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              <input
+                ref={urlRef}
+                type="text"
+                placeholder="Or paste a PDF URL and press Enter"
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            <button type="button" className="btn-url-load" onClick={handleURL} disabled={loading}>
+              Load
+            </button>
+          </div>
           {error && <p className="error">{error}</p>}
         </form>
       </div>

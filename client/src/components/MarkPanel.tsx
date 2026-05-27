@@ -19,38 +19,48 @@ export default function MarkPanel({
   markSchemeInfo, markSchemeTotalPages,
 }: Props) {
   const [context, setContext] = useState('');
+  const [capturing, setCapturing] = useState(false);
 
   const captureAndMark = useCallback(async () => {
     const wrapper = pageRef.current?.querySelector('.page-wrapper') as HTMLElement | null;
     if (!wrapper) return;
 
-    const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(wrapper, {
-      useCORS: true,
-      scale: 2,
-      backgroundColor: '#ffffff',
-    });
-    const base64 = canvas.toDataURL('image/png').split(',')[1];
+    setCapturing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(wrapper, {
+        useCORS: true,
+        scale: 2,
+        backgroundColor: '#ffffff',
+      });
+      const base64 = canvas.toDataURL('image/png').split(',')[1];
 
-    // If mark scheme is loaded, render ALL pages
-    let msImages: string[] | undefined;
-    if (markSchemeInfo && markSchemeTotalPages > 0) {
-      msImages = [];
-      const { renderPDFPageToBase64 } = await import('../utils/pdf');
-      const maxWidth = 800;
-      for (let p = 1; p <= markSchemeTotalPages; p++) {
-        try {
-          const img = await renderPDFPageToBase64(markSchemeInfo.url, p, maxWidth);
-          msImages.push(img);
-        } catch (err) {
-          console.error(`Failed to render mark scheme page ${p}:`, err);
+      // If mark scheme is loaded, render ALL pages
+      let msImages: string[] | undefined;
+      if (markSchemeInfo && markSchemeTotalPages > 0) {
+        msImages = [];
+        const { renderPDFPageToBase64 } = await import('../utils/pdf');
+        const maxWidth = 800;
+        for (let p = 1; p <= markSchemeTotalPages; p++) {
+          try {
+            const img = await renderPDFPageToBase64(markSchemeInfo.url, p, maxWidth);
+            msImages.push(img);
+          } catch (err) {
+            console.error(`Failed to render mark scheme page ${p}:`, err);
+          }
         }
+        if (msImages.length === 0) msImages = undefined;
       }
-      if (msImages.length === 0) msImages = undefined;
-    }
 
-    onMark(base64, context || undefined, msImages);
+      setCapturing(false);
+      onMark(base64, context || undefined, msImages);
+    } catch (err: any) {
+      setCapturing(false);
+      console.error('Capture failed:', err);
+    }
   }, [pageRef, onMark, context, markSchemeInfo, markSchemeTotalPages]);
+
+  const isLoading = marking || capturing;
 
   return (
     <div className="mark-panel">
@@ -76,12 +86,12 @@ export default function MarkPanel({
         <button
           className="btn-mark"
           onClick={captureAndMark}
-          disabled={marking}
+          disabled={isLoading}
         >
-          {marking ? (
+          {isLoading ? (
             <>
               <div className="spinner-small" />
-              Marking...
+              {capturing ? 'Capturing page...' : 'Marking...'}
             </>
           ) : (
             <>
