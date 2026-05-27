@@ -25,8 +25,9 @@ export default function TextBoxes({
     const container = containerRef.current;
     if (!container) return;
 
-    // Find the inner content container (the overflow-hidden div that wraps .page-wrapper)
-    const pageWrapper = container.querySelector('.page-wrapper');
+    // .page-wrapper is an ancestor element, climb up to find it
+    const pageWrapper = container.closest('.page-wrapper');
+    // The inner content container is the overflow-hidden div wrapping .page-wrapper
     const innerContainer = pageWrapper?.parentElement;
     if (!innerContainer) return;
     const innerRect = innerContainer.getBoundingClientRect();
