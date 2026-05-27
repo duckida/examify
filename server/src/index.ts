@@ -95,6 +95,14 @@ Return JSON only, no markdown formatting:
   }
 });
 
+const clientDist = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 const server = app.listen(PORT, () => {
   console.log(`Examify server running on http://localhost:${PORT}`);
 });
