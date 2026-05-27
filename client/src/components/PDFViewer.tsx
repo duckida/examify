@@ -20,7 +20,7 @@ interface Props {
   onPageChange: (page: number) => void;
   annotations: PageAnnotations;
   onAnnotationsChange: (ann: PageAnnotations) => void;
-  onMark: (imageBase64: string, questionContext?: string, pageText?: string) => void;
+  onMark: (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => void;
   onReset: () => void;
   marking: boolean;
   markError: string | null;
@@ -496,7 +496,13 @@ export default function PDFViewer({
         </div>
 
         <MarkPanel
-          onMark={(imageBase64, context) => onMark(imageBase64, context, pageText)}
+          onMark={(imageBase64, context) => {
+            const textBoxesText = annotations.textBoxes
+              .map(b => b.text)
+              .filter(t => t.trim())
+              .join('\n\n');
+            onMark(imageBase64, context, pageText, textBoxesText || undefined);
+          }}
           marking={marking}
           markError={markError}
           markResult={markResult}

@@ -90,7 +90,7 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
 
 app.post('/api/mark', async (req, res) => {
   try {
-    const { image, pageText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel } = req.body;
+    const { image, pageText, textBoxesText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel } = req.body;
     if (!image) {
       res.status(400).json({ error: 'No image provided' });
       return;
@@ -112,6 +112,10 @@ app.post('/api/mark', async (req, res) => {
       userContent.push({ type: 'text' as const, text: `Student's answer text (extracted from PDF):\n${pageText}` });
     }
 
+    if (textBoxesText) {
+      userContent.push({ type: 'text' as const, text: `Student's typed annotations (from text boxes):\n${textBoxesText}` });
+    }
+
     userContent.push(
       { type: 'text' as const, text: 'Here is the student\'s answer page as an image (including any annotations):' },
       { type: 'image' as const, image: `data:image/png;base64,${image}` },
@@ -131,7 +135,7 @@ app.post('/api/mark', async (req, res) => {
     const result = await generateText({
       model,
       system: `You are an expert examiner marking student answers against official mark schemes.
-The student's answer is provided as both extracted text and a page image. Use both sources to assess the answer.
+The student's answer is provided as extracted text, typed annotations (text boxes), and a page image. Use all sources to assess the answer.
 The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
 Return JSON only, no markdown formatting:
 - score (number): marks awarded

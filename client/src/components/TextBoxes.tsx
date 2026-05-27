@@ -22,13 +22,19 @@ export default function TextBoxes({
 
   const handleAddBox = useCallback((e: React.MouseEvent) => {
     if (!addMode) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Find the inner content container (the overflow-hidden div that wraps .page-wrapper)
+    const pageWrapper = container.querySelector('.page-wrapper');
+    const innerContainer = pageWrapper?.parentElement;
+    if (!innerContainer) return;
+    const innerRect = innerContainer.getBoundingClientRect();
 
     const newBox: TextBoxData = {
       id: `text-${Date.now()}-${idCounter++}`,
-      x: ((e.clientX - rect.left) / rect.width) * width,
-      y: ((e.clientY - rect.top) / rect.height) * height,
+      x: ((e.clientX - innerRect.left) / innerRect.width) * width,
+      y: ((e.clientY - innerRect.top) / innerRect.height) * height,
       width: 200,
       height: 60,
       text: '',

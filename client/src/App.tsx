@@ -105,7 +105,7 @@ export default function App() {
   }, [aiProvider, hackClubApiKey, parsingModel]);
 
   const handleMark = useCallback(
-    async (imageBase64: string, questionContext?: string, pageText?: string) => {
+    async (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => {
       setMarking(true);
       setMarkError(null);
       try {
@@ -115,6 +115,7 @@ export default function App() {
           body: JSON.stringify({
             image: imageBase64,
             pageText,
+            textBoxesText,
             questionContext,
             parsedMarkSchemeText,
             aiProvider,
