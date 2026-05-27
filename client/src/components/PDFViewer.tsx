@@ -506,13 +506,15 @@ export default function PDFViewer({
           marking={marking}
           markError={markError}
           markResult={markResult}
-          pageRef={containerRef}
           currentPage={currentPage}
           hasAnnotations={annotations.drawings.length > 0 || annotations.textBoxes.length > 0}
           markSchemeInfo={markSchemeInfo}
           markSchemeTotalPages={markSchemeTotalPages}
           parsedMarkSchemeText={parsedMarkSchemeText}
           parsingMarkScheme={parsingMarkScheme}
+          pdfData={pdfInfo.data}
+          pageDimensions={pageDimensions}
+          drawings={annotations.drawings}
         />
       </div>
     </div>

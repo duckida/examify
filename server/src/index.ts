@@ -6,6 +6,7 @@ import fs from 'fs';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
 import { generateText } from 'ai';
+import { pdf } from 'pdf-to-img';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +31,28 @@ app.get('/api/fetch-pdf', async (req, res) => {
     res.send(Buffer.from(buffer));
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch PDF' });
+  }
+});
+
+app.post('/api/render-page', async (req, res) => {
+  try {
+    const { pdfData, pageNumber } = req.body;
+    if (!pdfData) {
+      res.status(400).json({ error: 'No PDF data provided' });
+      return;
+    }
+
+    const dataUrl = `data:application/pdf;base64,${pdfData}`;
+    const doc = await pdf(dataUrl, { scale: 2 });
+
+    const pageBuffer = await doc.getPage(pageNumber || 1);
+    doc.destroy();
+
+    const base64 = pageBuffer.toString('base64');
+    res.json({ image: base64 });
+  } catch (error: any) {
+    console.error('Page render error:', error);
+    res.status(500).json({ error: error.message || 'Failed to render page' });
   }
 });
 

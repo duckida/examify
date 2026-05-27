@@ -20,6 +20,16 @@ async function getPDFPageCountFromBuffer(buffer: ArrayBuffer): Promise<number> {
   return numPages;
 }
 
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 export default function UploadPage({ onUploadComplete }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,8 +41,9 @@ export default function UploadPage({ onUploadComplete }: Props) {
   const loadPDFFromBuffer = async (buffer: ArrayBuffer, filename: string) => {
     const blob = new Blob([buffer], { type: 'application/pdf' });
     const blobUrl = URL.createObjectURL(blob);
+    const base64 = arrayBufferToBase64(buffer);
     const numPages = await getPDFPageCountFromBuffer(buffer);
-    const info: PDFInfo = { id: filename, filename, url: blobUrl };
+    const info: PDFInfo = { id: filename, filename, url: blobUrl, data: base64 };
     onUploadComplete(info, numPages);
   };
 

@@ -1,41 +1,80 @@
-import { useState, useCallback, type RefObject } from 'react';
-import type { MarkResult, PDFInfo } from '../types';
+import { useState, useCallback } from 'react';
+import type { MarkResult, PDFInfo, DrawingPath } from '../types';
 
 interface Props {
   onMark: (imageBase64: string, questionContext?: string) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
-  pageRef: RefObject<HTMLDivElement | null>;
   currentPage: number;
   hasAnnotations: boolean;
   markSchemeInfo: PDFInfo | null;
   markSchemeTotalPages: number;
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
+  pdfData?: string;
+  pageDimensions: { width: number; height: number };
+  drawings: DrawingPath[];
 }
 
 export default function MarkPanel({
-  onMark, marking, markError, markResult, pageRef,
+  onMark, marking, markError, markResult,
   currentPage, hasAnnotations,
   markSchemeInfo, markSchemeTotalPages,
   parsedMarkSchemeText, parsingMarkScheme,
+  pdfData, pageDimensions, drawings,
 }: Props) {
   const [context, setContext] = useState('');
   const [capturing, setCapturing] = useState(false);
 
   const captureAndMark = useCallback(async () => {
-    const wrapper = pageRef.current?.querySelector('.page-wrapper') as HTMLElement | null;
-    if (!wrapper) return;
+    if (!pdfData) return;
 
     setCapturing(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(wrapper, {
-        useCORS: true,
-        scale: 2,
-        backgroundColor: '#ffffff',
+      // Render the PDF page on the server
+      const renderRes = await fetch('/api/render-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfData, pageNumber: currentPage }),
       });
+      if (!renderRes.ok) {
+        const err = await renderRes.json();
+        throw new Error(err.error || 'Failed to render page');
+      }
+      const { image: renderedBase64 } = await renderRes.json();
+
+      // Load the rendered image onto a canvas and composite drawings
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load rendered image'));
+        img.src = `data:image/png;base64,${renderedBase64}`;
+      });
+
+      // Scale factor: pdf-to-img renders at scale 2, so image is 2x page dimensions
+      const scale = img.width / pageDimensions.width;
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      // Replay drawings scaled to match the rendered image size
+      for (const path of drawings) {
+        if (path.points.length < 2) continue;
+        ctx.beginPath();
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.width * scale;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(path.points[0].x * scale, path.points[0].y * scale);
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x * scale, path.points[i].y * scale);
+        }
+        ctx.stroke();
+      }
+
       const base64 = canvas.toDataURL('image/png').split(',')[1];
 
       setCapturing(false);
@@ -44,7 +83,7 @@ export default function MarkPanel({
       setCapturing(false);
       console.error('Capture failed:', err);
     }
-  }, [pageRef, onMark, context]);
+  }, [pdfData, currentPage, pageDimensions, drawings, onMark, context]);
 
   const isLoading = marking || capturing || parsingMarkScheme;
 
@@ -72,12 +111,12 @@ export default function MarkPanel({
         <button
           className="btn-mark"
           onClick={captureAndMark}
-          disabled={isLoading}
+          disabled={isLoading || !pdfData}
         >
           {isLoading ? (
             <>
               <div className="spinner-small" />
-              {capturing ? 'Capturing page...' : 'Marking...'}
+              {capturing ? 'Rendering page...' : 'Marking...'}
             </>
           ) : (
             <>
