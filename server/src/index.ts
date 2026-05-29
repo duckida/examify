@@ -56,15 +56,36 @@ app.post('/api/render-page', async (req, res) => {
   }
 });
 
+const FREE_MODEL = 'gemini-3.1-flash-lite';
+const HACKCLUB_MODEL = 'qwen/qwen3.6-flash';
+const MAX_RETRIES = 3;
+
 function getModel(provider?: string, hackClubApiKey?: string, modelName?: string) {
   if (provider === 'hackclub' && hackClubApiKey) {
     const hackclub = createOpenRouter({
       apiKey: hackClubApiKey,
       baseUrl: 'https://ai.hackclub.com/proxy/v1',
     });
-    return hackclub(modelName || process.env.LLM_MODEL || 'qwen/qwen3.6-flash');
+    return hackclub(modelName || process.env.LLM_MODEL || HACKCLUB_MODEL);
   }
-  return google(modelName || process.env.LLM_MODEL || 'gemini-3.1-flash-lite');
+  return google(FREE_MODEL);
+}
+
+async function generateTextWithRetry(params: Parameters<typeof generateText>[0], retries = MAX_RETRIES): Promise<Awaited<ReturnType<typeof generateText>>> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await generateText(params);
+    } catch (error: any) {
+      lastError = error;
+      if (error.name === 'AbortError') throw error;
+      console.error(`LLM call failed (attempt ${attempt + 1}/${retries}):`, error.message);
+      if (attempt < retries - 1) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 app.post('/api/parse-mark-scheme', async (req, res) => {
@@ -86,7 +107,7 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
 
     const llmModel = getModel(aiProvider, hackClubApiKey, model);
 
-    const result = await generateText({
+    const result = await generateTextWithRetry({
       model: llmModel,
       system: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
       messages: [
@@ -155,7 +176,7 @@ app.post('/api/mark', async (req, res) => {
 
     const model = getModel(aiProvider, hackClubApiKey, markingModel);
 
-    const result = await generateText({
+    const result = await generateTextWithRetry({
       model,
       system: `You are an expert examiner marking student answers against official mark schemes.
 The student wrote their answers in text boxes overlaid on the exam paper page. The text from those text boxes is provided below. Treat this text as the student's official answer.

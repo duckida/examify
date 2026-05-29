@@ -309,7 +309,7 @@ export default function PDFViewer({
                     onChange={() => onAiProviderChange('free')}
                   />
                   <span className="settings-option-label">Free endpoint</span>
-                  <span className="settings-option-desc">Uses server-configured AI (e.g. Google Gemini)</span>
+                  <span className="settings-option-desc">Uses server-configured AI</span>
                 </label>
                 <label className={`settings-option ${aiProvider === 'hackclub' ? 'selected' : ''}`}>
                   <input
@@ -336,29 +336,33 @@ export default function PDFViewer({
 
                 <div className="settings-divider" />
 
-                <div className="settings-header">Models</div>
-                <div className="settings-field">
-                  <label className="settings-field-label">Marking model</label>
-                  <input
-                    type="text"
-                    className="settings-key-input"
-                    placeholder={aiProvider === 'hackclub' ? 'qwen/qwen3.6-flash' : 'gemini-3.1-flash-lite'}
-                    value={markingModel}
-                    onChange={(e) => onMarkingModelChange(e.target.value)}
-                  />
-                  <span className="settings-field-desc">Model used for marking answers</span>
-                </div>
-                <div className="settings-field">
-                  <label className="settings-field-label">Parsing model</label>
-                  <input
-                    type="text"
-                    className="settings-key-input"
-                    placeholder={aiProvider === 'hackclub' ? 'qwen/qwen3.6-flash' : 'gemini-3.1-flash-lite'}
-                    value={parsingModel}
-                    onChange={(e) => onParsingModelChange(e.target.value)}
-                  />
-                  <span className="settings-field-desc">Model used for extracting mark scheme text</span>
-                </div>
+                {aiProvider === 'hackclub' && (
+                  <>
+                    <div className="settings-header">Models</div>
+                    <div className="settings-field">
+                      <label className="settings-field-label">Marking model</label>
+                      <input
+                        type="text"
+                        className="settings-key-input"
+                        placeholder="qwen/qwen3.6-flash"
+                        value={markingModel}
+                        onChange={(e) => onMarkingModelChange(e.target.value)}
+                      />
+                      <span className="settings-field-desc">Model used for marking answers</span>
+                    </div>
+                    <div className="settings-field">
+                      <label className="settings-field-label">Parsing model</label>
+                      <input
+                        type="text"
+                        className="settings-key-input"
+                        placeholder="qwen/qwen3.6-flash"
+                        value={parsingModel}
+                        onChange={(e) => onParsingModelChange(e.target.value)}
+                      />
+                      <span className="settings-field-desc">Model used for extracting mark scheme text</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
