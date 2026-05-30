@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';
-import type { MarkResult, PDFInfo, DrawingPath, TextBoxData } from '../types';
+import type { MarkResult, MarkRecord, PDFInfo, DrawingPath, TextBoxData } from '../types';
+import ScoreSection from './ScoreSection';
 
 interface Props {
   onMark: (imageBase64: string, questionContext?: string) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
+  marks: MarkRecord[];
   currentPage: number;
   hasAnnotations: boolean;
   markSchemeInfo: PDFInfo | null;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export default function MarkPanel({
-  onMark, marking, markError, markResult,
+  onMark, marking, markError, markResult, marks,
   currentPage, hasAnnotations,
   markSchemeInfo, markSchemeTotalPages,
   parsedMarkSchemeText, parsingMarkScheme,
@@ -115,6 +117,8 @@ export default function MarkPanel({
 
   return (
     <div className="mark-panel">
+      <ScoreSection marks={marks} />
+
       <div className="mark-controls">
         <textarea
           className="context-input"

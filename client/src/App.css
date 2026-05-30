@@ -816,3 +816,78 @@
   color: var(--text-secondary);
   margin-top: 4px;
 }
+
+/* Score Section */
+.score-section {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.score-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.score-section-body {
+  padding: 12px;
+  text-align: center;
+}
+
+.score-section-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.score-section-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.score-section-divider {
+  font-size: 20px;
+  color: var(--text-secondary);
+  margin: 0 2px;
+}
+
+.score-section-total {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.score-section-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.score-section-percentage {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.score-section-pages {
+  font-size: 12px;
+  color: var(--text-secondary);
+}

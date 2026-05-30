@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { PDFInfo, PageAnnotations, MarkResult, DrawingPath, TextBoxData } from '../types';
+import type { PDFInfo, PageAnnotations, MarkResult, MarkRecord, DrawingPath, TextBoxData } from '../types';
 import DrawingCanvas from './DrawingCanvas';
 import TextBoxes from './TextBoxes';
 import MarkPanel from './MarkPanel';
@@ -26,6 +26,7 @@ interface Props {
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
+  marks: MarkRecord[];
   aiProvider: 'free' | 'hackclub';
   hackClubApiKey: string;
   onAiProviderChange: (provider: 'free' | 'hackclub') => void;
@@ -48,7 +49,7 @@ export default function PDFViewer({
   pdfInfo, markSchemeInfo, markSchemeTotalPages, onMarkSchemeUpload,
   currentPage, totalPages, onPageChange,
   annotations, onAnnotationsChange,
-  onMark, onReset, marking, markError, markResult,
+  onMark, onReset, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
   parsedMarkSchemeText, parsingMarkScheme,
@@ -428,6 +429,7 @@ export default function PDFViewer({
           marking={marking}
           markError={markError}
           markResult={markResult}
+          marks={marks}
           currentPage={currentPage}
           hasAnnotations={annotations.drawings.length > 0 || annotations.textBoxes.length > 0}
           markSchemeInfo={markSchemeInfo}

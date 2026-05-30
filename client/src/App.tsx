@@ -161,6 +161,7 @@ export default function App() {
       marking={marking || parsingMarkScheme}
       markError={markError}
       markResult={currentMark}
+      marks={marks}
       aiProvider={aiProvider}
       hackClubApiKey={hackClubApiKey}
       onAiProviderChange={(p) => {
