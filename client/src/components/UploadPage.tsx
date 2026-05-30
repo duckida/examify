@@ -1,8 +1,19 @@
-import { useState, useRef, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import type { PDFInfo } from '../types';
+import { getAllSavedSessionKeys, deleteSession, loadSessionAsync } from '../utils/storage';
 
 interface Props {
   onUploadComplete: (info: PDFInfo, totalPages: number) => void;
+  onRestoreSession: (session: {
+    pdfInfo: PDFInfo;
+    totalPages: number;
+    currentPage: number;
+    annotations: Record<number, any>;
+    marks: any[];
+    markSchemeInfo: PDFInfo | null;
+    markSchemeTotalPages: number;
+    parsedMarkSchemeText: string | null;
+  }) => void;
 }
 
 const pdfjsWorkerPromise = (async () => {
@@ -30,13 +41,20 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export default function UploadPage({ onUploadComplete }: Props) {
+export default function UploadPage({ onUploadComplete, onRestoreSession }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('Loading...');
   const [error, setError] = useState<string | null>(null);
+  const [savedPapers, setSavedPapers] = useState<{ key: string; filename: string }[]>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSavedPapers(getAllSavedSessionKeys());
+  }, []);
 
   const loadPDFFromBuffer = async (buffer: ArrayBuffer, filename: string) => {
     const blob = new Blob([buffer], { type: 'application/pdf' });
@@ -89,6 +107,36 @@ export default function UploadPage({ onUploadComplete }: Props) {
       setError(e.message || 'Failed to load PDF from URL');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReopen = async (key: string) => {
+    setOpening(key);
+    setError(null);
+    try {
+      const session = await loadSessionAsync(key);
+      if (session) {
+        onRestoreSession(session);
+      } else {
+        setError('Failed to load saved session');
+      }
+    } catch {
+      setError('Failed to load saved session');
+    } finally {
+      setOpening(null);
+    }
+  };
+
+  const handleDelete = async (key: string, filename: string) => {
+    if (!confirm(`Delete "${filename}"?`)) return;
+    setDeleting(key);
+    try {
+      await deleteSession(key);
+      setSavedPapers(prev => prev.filter(p => p.key !== key));
+    } catch {
+      setError('Failed to delete');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -167,6 +215,45 @@ export default function UploadPage({ onUploadComplete }: Props) {
           </div>
           {error && <p className="error">{error}</p>}
         </form>
+
+        {savedPapers.length > 0 && (
+          <div className="saved-papers">
+            <h2>Saved Papers</h2>
+            <ul className="saved-list">
+              {savedPapers.map((paper) => (
+                <li key={paper.key} className="saved-item">
+                  <button
+                    className="saved-name"
+                    onClick={() => handleReopen(paper.key)}
+                    disabled={opening === paper.key || deleting === paper.key}
+                    title="Open this paper"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    {opening === paper.key ? 'Loading...' : paper.filename}
+                  </button>
+                  <button
+                    className="saved-delete"
+                    onClick={() => handleDelete(paper.key, paper.filename)}
+                    disabled={opening === paper.key || deleting === paper.key}
+                    title="Delete this paper"
+                  >
+                    {deleting === paper.key ? (
+                      <div className="spinner-tiny" />
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

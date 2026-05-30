@@ -2,70 +2,20 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { PDFInfo, PageAnnotations, MarkResult, MarkRecord } from './types';
 import UploadPage from './components/UploadPage';
 import PDFViewer from './components/PDFViewer';
-import { saveSession, loadLastSession, clearLastSessionKey } from './utils/storage';
+import { saveSession, loadSessionAsync, clearLastSessionKey } from './utils/storage';
 import './App.css';
-
-function buildPDFInfoFromSaved(saved: PDFInfo): PDFInfo {
-  if (saved.data) {
-    const blob = new Blob([Uint8Array.from(atob(saved.data), c => c.charCodeAt(0))], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    return { ...saved, url };
-  }
-  return saved;
-}
 
 const PARSE_TIMEOUT_MS = 130000;
 
 export default function App() {
-  const [pdfInfo, setPDFInfo] = useState<PDFInfo | null>(() => {
-    const saved = loadLastSession();
-    if (saved?.pdfInfo) {
-      try {
-        return buildPDFInfoFromSaved(saved.pdfInfo);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const [markSchemeInfo, setMarkSchemeInfo] = useState<PDFInfo | null>(() => {
-    const saved = loadLastSession();
-    if (saved?.markSchemeInfo) {
-      try {
-        return buildPDFInfoFromSaved(saved.markSchemeInfo);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const [markSchemeTotalPages, setMarkSchemeTotalPages] = useState(() => {
-    const saved = loadLastSession();
-    return saved?.markSchemeTotalPages ?? 0;
-  });
-
-  const [currentPage, setCurrentPage] = useState(() => {
-    const saved = loadLastSession();
-    return saved?.currentPage ?? 1;
-  });
-
-  const [totalPages, setTotalPages] = useState(() => {
-    const saved = loadLastSession();
-    return saved?.totalPages ?? 0;
-  });
-
-  const [annotations, setAnnotations] = useState<Record<number, PageAnnotations>>(() => {
-    const saved = loadLastSession();
-    return saved?.annotations ?? {};
-  });
-
-  const [marks, setMarks] = useState<MarkRecord[]>(() => {
-    const saved = loadLastSession();
-    return saved?.marks ?? [];
-  });
-
+  const [loading, setLoading] = useState(true);
+  const [pdfInfo, setPDFInfo] = useState<PDFInfo | null>(null);
+  const [markSchemeInfo, setMarkSchemeInfo] = useState<PDFInfo | null>(null);
+  const [markSchemeTotalPages, setMarkSchemeTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [annotations, setAnnotations] = useState<Record<number, PageAnnotations>>({});
+  const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<'free' | 'hackclub'>(
@@ -74,19 +24,13 @@ export default function App() {
   const [hackClubApiKey, setHackClubApiKey] = useState(
     () => localStorage.getItem('hackClubApiKey') || '',
   );
-
   const [markingModel, setMarkingModel] = useState(
     () => localStorage.getItem('markingModel') || '',
   );
   const [parsingModel, setParsingModel] = useState(
     () => localStorage.getItem('parsingModel') || '',
   );
-
-  const [parsedMarkSchemeText, setParsedMarkSchemeText] = useState<string | null>(() => {
-    const saved = loadLastSession();
-    return saved?.parsedMarkSchemeText ?? null;
-  });
-
+  const [parsedMarkSchemeText, setParsedMarkSchemeText] = useState<string | null>(null);
   const [parsingMarkScheme, setParsingMarkScheme] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -94,15 +38,48 @@ export default function App() {
   const msUrlRef = useRef<string | null>(null);
   const parseAbortRef = useRef<AbortController | null>(null);
 
+  // Restore session from IndexedDB on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const saved = await loadSessionAsync();
+        if (cancelled || !saved) {
+          setLoading(false);
+          return;
+        }
+        if (saved.pdfInfo.url) {
+          pdfUrlRef.current = saved.pdfInfo.url;
+          setPDFInfo(saved.pdfInfo);
+          setTotalPages(saved.totalPages);
+          setCurrentPage(saved.currentPage);
+          setAnnotations(saved.annotations);
+          setMarks(saved.marks);
+          setParsedMarkSchemeText(saved.parsedMarkSchemeText);
+          if (saved.markSchemeInfo?.url) {
+            msUrlRef.current = saved.markSchemeInfo.url;
+            setMarkSchemeInfo(saved.markSchemeInfo);
+            setMarkSchemeTotalPages(saved.markSchemeTotalPages);
+          }
+        }
+      } catch {
+        // ignore, will show upload page
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Track current blob URLs for cleanup
   useEffect(() => {
     if (pdfInfo?.url) pdfUrlRef.current = pdfInfo.url;
     if (markSchemeInfo?.url) msUrlRef.current = markSchemeInfo.url;
   });
 
-  // Auto-save session whenever key state changes
+  // Auto-save session whenever key state changes (skip while loading initial state)
   useEffect(() => {
-    if (!pdfInfo) return;
+    if (loading || !pdfInfo) return;
     saveSession({
       pdfInfo,
       totalPages,
@@ -113,18 +90,18 @@ export default function App() {
       markSchemeTotalPages,
       parsedMarkSchemeText,
     });
-  }, [pdfInfo, totalPages, currentPage, annotations, marks, markSchemeInfo, markSchemeTotalPages, parsedMarkSchemeText]);
+  }, [loading, pdfInfo, totalPages, currentPage, annotations, marks, markSchemeInfo, markSchemeTotalPages, parsedMarkSchemeText]);
 
   // Re-trigger parse on reload if mark scheme exists but text is missing
   useEffect(() => {
+    if (loading) return;
     if (markSchemeInfo?.data && !parsedMarkSchemeText && !parsingMarkScheme) {
       triggerParse(markSchemeInfo);
     }
-  }, [markSchemeInfo]);
+  }, [loading, markSchemeInfo]);
 
   const triggerParse = useCallback(async (info: PDFInfo) => {
     if (!info.data) return;
-    // Cancel any in-flight parse
     if (parseAbortRef.current) parseAbortRef.current.abort();
     const controller = new AbortController();
     parseAbortRef.current = controller;
@@ -183,6 +160,33 @@ export default function App() {
     setParseError(null);
     setAnnotations({});
     setMarks([]);
+  }, []);
+
+  const handleRestoreSession = useCallback((session: {
+    pdfInfo: PDFInfo;
+    totalPages: number;
+    currentPage: number;
+    annotations: Record<number, PageAnnotations>;
+    marks: MarkRecord[];
+    markSchemeInfo: PDFInfo | null;
+    markSchemeTotalPages: number;
+    parsedMarkSchemeText: string | null;
+  }) => {
+    if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    if (parseAbortRef.current) parseAbortRef.current.abort();
+    pdfUrlRef.current = session.pdfInfo.url;
+    msUrlRef.current = session.markSchemeInfo?.url ?? null;
+    setPDFInfo(session.pdfInfo);
+    setTotalPages(session.totalPages);
+    setCurrentPage(session.currentPage);
+    setAnnotations(session.annotations);
+    setMarks(session.marks);
+    setMarkSchemeInfo(session.markSchemeInfo);
+    setMarkSchemeTotalPages(session.markSchemeTotalPages);
+    setParsedMarkSchemeText(session.parsedMarkSchemeText);
+    setParseError(null);
+    setMarkError(null);
   }, []);
 
   const handleReset = useCallback(() => {
@@ -253,8 +257,22 @@ export default function App() {
 
   const currentMark = marks.find(m => m.pageNumber === currentPage)?.result ?? null;
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner" />
+        <span>Loading your session...</span>
+      </div>
+    );
+  }
+
   if (!pdfInfo) {
-    return <UploadPage onUploadComplete={handleUploadComplete} />;
+    return (
+      <UploadPage
+        onUploadComplete={handleUploadComplete}
+        onRestoreSession={handleRestoreSession}
+      />
+    );
   }
 
   return (
