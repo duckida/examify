@@ -195,7 +195,7 @@ Return JSON only, no markdown formatting:
         : {
             providerOptions: {
               google: {
-                thinkingConfig: { thinkingLevel: 'low' },
+                thinkingConfig: { thinkingLevel: 'medium' },
               } satisfies GoogleLanguageModelOptions,
             },
           }),
