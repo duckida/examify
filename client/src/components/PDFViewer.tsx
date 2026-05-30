@@ -37,6 +37,7 @@ interface Props {
   onParsingModelChange: (model: string) => void;
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
+  parseError: string | null;
 }
 
 type ToolMode = 'draw' | 'text' | 'select';
@@ -52,7 +53,7 @@ export default function PDFViewer({
   onMark, onReset, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
-  parsedMarkSchemeText, parsingMarkScheme,
+  parsedMarkSchemeText, parsingMarkScheme, parseError,
 }: Props) {
   const [pageImage, setPageImage] = useState<string | null>(null);
   const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
@@ -436,6 +437,7 @@ export default function PDFViewer({
           markSchemeTotalPages={markSchemeTotalPages}
           parsedMarkSchemeText={parsedMarkSchemeText}
           parsingMarkScheme={parsingMarkScheme}
+          parseError={parseError}
           pdfData={pdfInfo.data}
           pageDimensions={pageDimensions}
           drawings={annotations.drawings}

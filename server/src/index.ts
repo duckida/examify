@@ -119,7 +119,7 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
           ],
         },
       ],
-      maxOutputTokens: 8000,
+      maxOutputTokens: 16000,
       abortSignal: controller.signal,
     });
 

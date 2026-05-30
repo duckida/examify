@@ -385,6 +385,21 @@
   color: var(--primary);
 }
 
+.ms-badge-error {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ms-warning {
+  padding: 8px 10px;
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: #92400e;
+  line-height: 1.4;
+}
+
 /* PDF Content Area */
 .pdf-content {
   display: flex;

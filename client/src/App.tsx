@@ -14,6 +14,8 @@ function buildPDFInfoFromSaved(saved: PDFInfo): PDFInfo {
   return saved;
 }
 
+const PARSE_TIMEOUT_MS = 130000;
+
 export default function App() {
   const [pdfInfo, setPDFInfo] = useState<PDFInfo | null>(() => {
     const saved = loadLastSession();
@@ -86,9 +88,11 @@ export default function App() {
   });
 
   const [parsingMarkScheme, setParsingMarkScheme] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
 
   const pdfUrlRef = useRef<string | null>(null);
   const msUrlRef = useRef<string | null>(null);
+  const parseAbortRef = useRef<AbortController | null>(null);
 
   // Track current blob URLs for cleanup
   useEffect(() => {
@@ -111,9 +115,63 @@ export default function App() {
     });
   }, [pdfInfo, totalPages, currentPage, annotations, marks, markSchemeInfo, markSchemeTotalPages, parsedMarkSchemeText]);
 
+  // Re-trigger parse on reload if mark scheme exists but text is missing
+  useEffect(() => {
+    if (markSchemeInfo?.data && !parsedMarkSchemeText && !parsingMarkScheme) {
+      triggerParse(markSchemeInfo);
+    }
+  }, [markSchemeInfo]);
+
+  const triggerParse = useCallback(async (info: PDFInfo) => {
+    if (!info.data) return;
+    // Cancel any in-flight parse
+    if (parseAbortRef.current) parseAbortRef.current.abort();
+    const controller = new AbortController();
+    parseAbortRef.current = controller;
+
+    setParsingMarkScheme(true);
+    setParseError(null);
+    setParsedMarkSchemeText(null);
+    try {
+      const timeoutId = setTimeout(() => controller.abort(), PARSE_TIMEOUT_MS);
+      const res = await fetch('/api/parse-mark-scheme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          markSchemePdf: info.data,
+          aiProvider,
+          hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
+          model: parsingModel || undefined,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        setParsedMarkSchemeText(data.text);
+        setParseError(null);
+      } else {
+        const err = await res.json();
+        const msg = err.error || 'Failed to parse mark scheme';
+        setParseError(msg);
+        console.error('Failed to parse mark scheme:', msg);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setParseError('Mark scheme parsing timed out');
+      } else {
+        setParseError('Failed to parse mark scheme');
+        console.error('Failed to parse mark scheme:', err);
+      }
+    } finally {
+      setParsingMarkScheme(false);
+    }
+  }, [aiProvider, hackClubApiKey, parsingModel]);
+
   const handleUploadComplete = useCallback((info: PDFInfo, pages: number) => {
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    if (parseAbortRef.current) parseAbortRef.current.abort();
     pdfUrlRef.current = info.url;
     msUrlRef.current = null;
     setPDFInfo(info);
@@ -122,6 +180,7 @@ export default function App() {
     setMarkSchemeInfo(null);
     setMarkSchemeTotalPages(0);
     setParsedMarkSchemeText(null);
+    setParseError(null);
     setAnnotations({});
     setMarks([]);
   }, []);
@@ -129,6 +188,7 @@ export default function App() {
   const handleReset = useCallback(() => {
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+    if (parseAbortRef.current) parseAbortRef.current.abort();
     pdfUrlRef.current = null;
     msUrlRef.current = null;
     clearLastSessionKey();
@@ -136,6 +196,7 @@ export default function App() {
     setMarkSchemeInfo(null);
     setMarkSchemeTotalPages(0);
     setParsedMarkSchemeText(null);
+    setParseError(null);
     setCurrentPage(1);
     setTotalPages(0);
     setAnnotations({});
@@ -152,35 +213,8 @@ export default function App() {
     msUrlRef.current = info.url;
     setMarkSchemeInfo(info);
     setMarkSchemeTotalPages(totalPages);
-
-    if (info.data) {
-      setParsingMarkScheme(true);
-      setParsedMarkSchemeText(null);
-      try {
-        const res = await fetch('/api/parse-mark-scheme', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            markSchemePdf: info.data,
-            aiProvider,
-            hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
-            model: parsingModel || undefined,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setParsedMarkSchemeText(data.text);
-        } else {
-          const err = await res.json();
-          console.error('Failed to parse mark scheme:', err.error);
-        }
-      } catch (err) {
-        console.error('Failed to parse mark scheme:', err);
-      } finally {
-        setParsingMarkScheme(false);
-      }
-    }
-  }, [aiProvider, hackClubApiKey, parsingModel]);
+    triggerParse(info);
+  }, [triggerParse]);
 
   const handleMark = useCallback(
     async (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => {
@@ -262,6 +296,7 @@ export default function App() {
       }}
       parsedMarkSchemeText={parsedMarkSchemeText}
       parsingMarkScheme={parsingMarkScheme}
+      parseError={parseError}
     />
   );
 }

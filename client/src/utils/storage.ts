@@ -26,13 +26,16 @@ function getStorageKey(pdfInfo: PDFInfo): string {
 export function saveSession(session: SavedSession): boolean {
   try {
     const key = getStorageKey(session.pdfInfo);
+    const msInfo = session.markSchemeInfo
+      ? { ...session.markSchemeInfo, data: undefined }
+      : null;
     const payload = JSON.stringify({
-      pdfInfo: session.pdfInfo,
+      pdfInfo: { ...session.pdfInfo, data: undefined },
       totalPages: session.totalPages,
       currentPage: session.currentPage,
       annotations: session.annotations,
       marks: session.marks,
-      markSchemeInfo: session.markSchemeInfo,
+      markSchemeInfo: msInfo,
       markSchemeTotalPages: session.markSchemeTotalPages,
       parsedMarkSchemeText: session.parsedMarkSchemeText,
     });
