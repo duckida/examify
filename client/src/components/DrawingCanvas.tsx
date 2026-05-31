@@ -8,10 +8,21 @@ interface Props {
   onDrawingsChange: (drawings: DrawingPath[]) => void;
   enabled: boolean;
   color: string;
+  erasing?: boolean;
+}
+
+function findStrokeAt(drawings: DrawingPath[], x: number, y: number, threshold = 12): number | null {
+  for (let i = drawings.length - 1; i >= 0; i--) {
+    const path = drawings[i];
+    for (const pt of path.points) {
+      if (Math.hypot(pt.x - x, pt.y - y) <= threshold) return i;
+    }
+  }
+  return null;
 }
 
 export default function DrawingCanvas({
-  width, height, drawings, onDrawingsChange, enabled, color,
+  width, height, drawings, onDrawingsChange, enabled, color, erasing,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -41,7 +52,7 @@ export default function DrawingCanvas({
     }
   }, [drawings, width, height]);
 
-  const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return {
       x: (e.clientX - rect.left) * (width / rect.width),
@@ -49,14 +60,27 @@ export default function DrawingCanvas({
     };
   };
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
+    e.preventDefault();
+    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+
+    if (erasing) {
+      const pos = getPos(e);
+      const idx = findStrokeAt(drawings, pos.x, pos.y);
+      if (idx !== null) {
+        onDrawingsChange(drawings.filter((_, i) => i !== idx));
+      }
+      return;
+    }
+
     setIsDrawing(true);
     currentPath.current = [getPos(e)];
-  }, [enabled]);
+  }, [enabled, erasing, drawings, onDrawingsChange]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !enabled) return;
+    e.preventDefault();
     const pos = getPos(e);
     currentPath.current.push(pos);
 
@@ -77,7 +101,8 @@ export default function DrawingCanvas({
     ctx.stroke();
   }, [isDrawing, enabled, color]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    (e.target as HTMLCanvasElement).releasePointerCapture(e.pointerId);
     if (!isDrawing) return;
     setIsDrawing(false);
     if (currentPath.current.length < 2) return;
@@ -97,6 +122,8 @@ export default function DrawingCanvas({
     onDrawingsChange(drawings.slice(0, -1));
   }, [drawings, onDrawingsChange]);
 
+  const cursor = erasing ? 'not-allowed' : enabled ? 'crosshair' : 'default';
+
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, width, height }}>
       <canvas
@@ -109,14 +136,15 @@ export default function DrawingCanvas({
           left: 0,
           width: '100%',
           height: '100%',
-          cursor: enabled ? 'crosshair' : 'default',
+          cursor,
+          touchAction: 'none',
         }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       />
-      {drawings.length > 0 && enabled && (
+      {drawings.length > 0 && enabled && !erasing && (
         <button
           onClick={handleUndo}
           style={{

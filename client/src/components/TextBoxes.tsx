@@ -39,7 +39,7 @@ export default function TextBoxes({
       width: 200,
       height: 60,
       text: '',
-      fontSize: 16,
+      fontSize: 20,
       color: '#1e293b',
     };
     onTextBoxesChange([...textBoxes, newBox]);
@@ -96,6 +96,7 @@ export default function TextBoxes({
         return (
           <Rnd
             key={box.id}
+            dragHandleClassName="drag-handle"
             size={{ width: box.width, height: box.height }}
             position={{ x: box.x, y: box.y }}
             onDragStop={(_, d) => updateBox(box.id, { x: d.x, y: d.y })}
@@ -129,6 +130,18 @@ export default function TextBoxes({
               style={{ position: 'relative', width: '100%', height: '100%' }}
               onKeyDown={(e) => handleKeyDown(e, box.id)}
             >
+              <div
+                className="drag-handle"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 20,
+                  cursor: enabled ? 'grab' : 'default',
+                  zIndex: 2,
+                }}
+              />
               <textarea
                 value={box.text}
                 onChange={(e) => updateBox(box.id, { text: e.target.value })}
@@ -145,7 +158,7 @@ export default function TextBoxes({
                   color: box.color,
                   padding: 2,
                   outline: 'none',
-                  fontFamily: 'inherit',
+                  fontFamily: "'Patrick Hand', cursive",
                   lineHeight: 1.4,
                 }}
               />
