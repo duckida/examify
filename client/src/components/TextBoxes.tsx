@@ -112,13 +112,13 @@ export default function TextBoxes({
             bounds="parent"
             style={{
               background: 'rgba(255, 255, 255, 0.85)',
-              border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
+              border: isSelected ? '2px solid var(--color-primary)' : '2px solid transparent',
               borderRadius: 4,
               padding: 4,
               transition: 'border-color 0.15s',
             }}
             onMouseEnter={(e: React.MouseEvent) => {
-              if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = 'var(--primary)';
+              if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)';
             }}
             onMouseLeave={(e: React.MouseEvent) => {
               if (!isSelected) (e.currentTarget as HTMLElement).style.borderColor = 'transparent';

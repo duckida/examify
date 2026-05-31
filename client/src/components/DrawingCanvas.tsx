@@ -124,11 +124,11 @@ export default function DrawingCanvas({
             bottom: 8,
             right: 8,
             background: 'rgba(255,255,255,0.9)',
-            border: '1px solid var(--border)',
+            border: '1px solid var(--color-border)',
             borderRadius: 6,
             padding: '4px 10px',
             fontSize: 12,
-            color: 'var(--text-secondary)',
+            color: 'var(--color-text-secondary)',
           }}
           title="Undo last stroke"
         >

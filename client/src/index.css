@@ -5,24 +5,61 @@
 }
 
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --success: #22c55e;
-  --error: #ef4444;
-  --radius: 8px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* === PRIMARY — Kakao Yellow === */
+  --color-primary: #FEE500;
+  --color-primary-hover: #FFE81F;
+  --color-primary-active: #E6CF00;
+  --color-primary-light: #FFF3CD;
+  --color-primary-lighter: #FFFAE6;
+
+  /* === SEMANTIC === */
+  --color-success: #10B981;
+  --color-success-light: #D1FAE5;
+  --color-warning: #F59E0B;
+  --color-warning-light: #FEF3C7;
+  --color-error: #EF4444;
+  --color-error-light: #FEE2E2;
+  --color-info: #3B82F6;
+  --color-info-light: #DBEAFE;
+
+  /* === TEXT (near-black on light) === */
+  --color-text-primary: #111111;
+  --color-text-secondary: #666666;
+  --color-text-muted: #999999;
+
+  /* === SURFACES & BORDERS === */
+  --color-border: #EEEEEE;
+  --color-border-hover: #DDDDDD;
+  --color-bg: #FFFFFF;
+  --color-bg-hover: #FAFAFA;
+  --color-bg-muted: #F8F8F8;
+
+  /* === RADII — generous rounding === */
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+}
+
+/* === DARK MODE === */
+.dark {
+  --color-text-primary: #F0F0F0;
+  --color-text-secondary: #AAAAAA;
+  --color-text-muted: #777777;
+  --color-border: #333333;
+  --color-border-hover: #444444;
+  --color-bg: #111111;
+  --color-bg-hover: #1A1A1A;
+  --color-bg-muted: #222222;
+  --color-primary-lighter: #2A2400;
+  --color-primary-light: #3D3500;
 }
 
 html, body, #root {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
 }
 
 button {
