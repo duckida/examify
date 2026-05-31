@@ -23,6 +23,8 @@ interface Props {
   onAnnotationsChange: (ann: PageAnnotations) => void;
   onMark: (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => void;
   onReset: () => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
@@ -50,7 +52,7 @@ export default function PDFViewer({
   pdfInfo, markSchemeInfo, markSchemeTotalPages, onMarkSchemeUpload,
   currentPage, totalPages, onPageChange,
   annotations, onAnnotationsChange,
-  onMark, onReset, marking, markError, markResult, marks,
+  onMark, onReset, onExport, onImport, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
   parsedMarkSchemeText, parsingMarkScheme, parseError,
@@ -67,6 +69,11 @@ export default function PDFViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = useCallback(() => {
+    importRef.current?.click();
+  }, []);
 
   const zoomIn = () => setZoom(z => Math.min(z + ZOOM_STEP, ZOOM_MAX));
   const zoomOut = () => setZoom(z => Math.max(z - ZOOM_STEP, ZOOM_MIN));
@@ -378,7 +385,36 @@ export default function PDFViewer({
               </div>
             )}
           </div>
+
+          <div className="toolbar-divider" />
+
+          <button className="btn-icon" onClick={onExport} title="Export .examify file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
+          <button className="btn-icon" onClick={handleImportClick} title="Import .examify file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".examify,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onImport(file);
+              e.target.value = '';
+            }}
+          />
         </div>
+
       </div>
 
       <div className="pdf-content">

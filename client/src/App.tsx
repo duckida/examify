@@ -208,6 +208,66 @@ export default function App() {
     setMarkError(null);
   }, []);
 
+  const handleExport = useCallback(() => {
+    if (!pdfInfo) return;
+    const exportData = {
+      version: 1,
+      pdfInfo,
+      markSchemeInfo,
+      markSchemeTotalPages,
+      totalPages,
+      currentPage,
+      annotations,
+      marks,
+      parsedMarkSchemeText,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pdfInfo.filename.replace(/\.[^.]+$/, '')}.examify`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [pdfInfo, markSchemeInfo, markSchemeTotalPages, totalPages, currentPage, annotations, marks, parsedMarkSchemeText]);
+
+  const handleImport = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.version !== 1) throw new Error('Invalid .examify file version');
+
+      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+      if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+      if (parseAbortRef.current) parseAbortRef.current.abort();
+
+      // Recreate blob URLs from base64 data
+      if (data.pdfInfo?.data) {
+        const blob = new Blob([Uint8Array.from(atob(data.pdfInfo.data), c => c.charCodeAt(0))], { type: 'application/pdf' });
+        data.pdfInfo.url = URL.createObjectURL(blob);
+      }
+      if (data.markSchemeInfo?.data) {
+        const blob = new Blob([Uint8Array.from(atob(data.markSchemeInfo.data), c => c.charCodeAt(0))], { type: 'application/pdf' });
+        data.markSchemeInfo.url = URL.createObjectURL(blob);
+      }
+
+      pdfUrlRef.current = data.pdfInfo.url;
+      msUrlRef.current = data.markSchemeInfo?.url ?? null;
+      setPDFInfo(data.pdfInfo);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.currentPage);
+      setAnnotations(data.annotations ?? {});
+      setMarks(data.marks ?? []);
+      setMarkSchemeInfo(data.markSchemeInfo ?? null);
+      setMarkSchemeTotalPages(data.markSchemeTotalPages ?? 0);
+      setParsedMarkSchemeText(data.parsedMarkSchemeText ?? null);
+      setParseError(null);
+      setMarkError(null);
+      setCurrentPage(1);
+    } catch (e: any) {
+      setMarkError(`Import failed: ${e.message}`);
+    }
+  }, []);
+
   const updateAnnotations = useCallback((page: number, ann: PageAnnotations) => {
     setAnnotations(prev => ({ ...prev, [page]: ann }));
   }, []);
@@ -288,6 +348,8 @@ export default function App() {
       onAnnotationsChange={(ann) => updateAnnotations(currentPage, ann)}
       onMark={handleMark}
       onReset={handleReset}
+      onExport={handleExport}
+      onImport={handleImport}
       marking={marking || parsingMarkScheme}
       markError={markError}
       markResult={currentMark}

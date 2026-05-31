@@ -184,6 +184,7 @@ export default function TextBoxes({
                   opacity: isSelected ? 1 : 0.6,
                   transition: 'opacity 0.15s, transform 0.15s',
                   boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  zIndex: 3,
                 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.opacity = '1';
