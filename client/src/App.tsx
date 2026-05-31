@@ -331,6 +331,7 @@ export default function App() {
       <UploadPage
         onUploadComplete={handleUploadComplete}
         onRestoreSession={handleRestoreSession}
+        onImport={handleImport}
       />
     );
   }

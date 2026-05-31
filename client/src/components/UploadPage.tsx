@@ -14,6 +14,7 @@ interface Props {
     markSchemeTotalPages: number;
     parsedMarkSchemeText: string | null;
   }) => void;
+  onImport: (file: File) => void;
 }
 
 const pdfjsWorkerPromise = (async () => {
@@ -41,7 +42,7 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export default function UploadPage({ onUploadComplete, onRestoreSession }: Props) {
+export default function UploadPage({ onUploadComplete, onRestoreSession, onImport }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('Loading...');
@@ -51,6 +52,9 @@ export default function UploadPage({ onUploadComplete, onRestoreSession }: Props
   const [opening, setOpening] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => importRef.current?.click();
 
   useEffect(() => {
     setSavedPapers(getAllSavedSessionKeys());
@@ -215,6 +219,31 @@ export default function UploadPage({ onUploadComplete, onRestoreSession }: Props
           </div>
           {error && <p className="error">{error}</p>}
         </form>
+
+        <div className="upload-divider" />
+
+        <div className="import-section">
+          <h2>Import Session</h2>
+          <button className="btn-import" onClick={handleImportClick}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Open .examify file
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".examify,application/json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onImport(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
 
         {savedPapers.length > 0 && (
           <div className="saved-papers">
