@@ -133,6 +133,7 @@ export default function TextBoxes({
                 value={box.text}
                 onChange={(e) => updateBox(box.id, { text: e.target.value })}
                 onFocus={() => setSelectedId(box.id)}
+                onMouseDown={(e) => e.stopPropagation()}
                 placeholder="Type answer..."
                 style={{
                   width: '100%',
