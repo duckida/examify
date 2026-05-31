@@ -91,8 +91,8 @@ async function generateTextWithRetry(params: Parameters<typeof generateText>[0],
 app.post('/api/parse-mark-scheme', async (req, res) => {
   try {
     const { markSchemePdf, aiProvider, hackClubApiKey, model } = req.body;
-    if (!markSchemePdf) {
-      res.status(400).json({ error: 'No mark scheme PDF provided' });
+    if (typeof markSchemePdf !== 'string' || markSchemePdf.length < 100) {
+      res.status(400).json({ error: 'Invalid mark scheme data' });
       return;
     }
 
@@ -135,8 +135,8 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
 app.post('/api/mark', async (req, res) => {
   try {
     const { image, pageText, textBoxesText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel } = req.body;
-    if (!image) {
-      res.status(400).json({ error: 'No image provided' });
+    if (typeof image !== 'string' || image.length < 100) {
+      res.status(400).json({ error: 'Invalid image data' });
       return;
     }
 
