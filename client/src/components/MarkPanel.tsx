@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { MarkResult, MarkRecord, PDFInfo, DrawingPath, TextBoxData } from '../types';
+import BulletList from './BulletList';
 import ScoreSection from './ScoreSection';
 
 interface Props {
@@ -195,12 +196,12 @@ export default function MarkPanel({
           {markResult.howToGainMarks && (
             <div className="result-how-to-gain">
               <h4>How to gain the marks you missed</h4>
-              <p className="pre-wrap">{markResult.howToGainMarks}</p>
+              <BulletList text={markResult.howToGainMarks} />
             </div>
           )}
           <div className="result-feedback">
             <h4>Feedback</h4>
-            <p className="pre-wrap">{markResult.feedback}</p>
+            <BulletList text={markResult.feedback} />
           </div>
 
           {markResult.breakdown && markResult.breakdown.length > 0 && (
