@@ -1096,36 +1096,40 @@
   margin-bottom: 6px;
 }
 
+.result-feedback p,
 .result-how-to-gain p {
   font-size: 13px;
   line-height: 1.6;
   color: var(--color-text-primary);
+  margin: 0 0 8px;
 }
 
-.pre-wrap {
-  white-space: pre-wrap;
-}
-
-.bullet-list ul {
+.result-feedback ul,
+.result-how-to-gain ul {
   margin: 0;
   padding-left: 20px;
   list-style: disc;
 }
 
-.bullet-list li {
+.result-feedback li,
+.result-how-to-gain li {
   font-size: 13px;
   line-height: 1.6;
   color: var(--color-text-primary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
-.bullet-list li::marker {
+.result-feedback li::marker,
+.result-how-to-gain li::marker {
   color: var(--color-text-secondary);
 }
 
-.bullet-list p {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  margin-bottom: 6px;
+.result-feedback strong,
+.result-how-to-gain strong {
+  font-weight: 600;
+}
+
+.result-feedback em,
+.result-how-to-gain em {
+  font-style: italic;
 }
