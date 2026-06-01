@@ -356,6 +356,15 @@
   color: var(--color-text-primary);
 }
 
+.btn-rename {
+  padding: 4px;
+  color: var(--color-text-tertiary);
+}
+
+.btn-rename:hover {
+  color: var(--color-text-primary);
+}
+
 .btn-page {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -1057,4 +1066,39 @@
 .score-section-pages {
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.settings-toggle {
+  margin-right: 6px;
+  accent-color: var(--color-primary);
+}
+
+.settings-field-label:has(.settings-toggle) {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.result-how-to-gain {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+}
+
+.result-how-to-gain h4 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.result-how-to-gain p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
 }

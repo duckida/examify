@@ -134,7 +134,7 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
 
 app.post('/api/mark', async (req, res) => {
   try {
-    const { image, pageText, textBoxesText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel } = req.body;
+    const { image, pageText, textBoxesText, parsedMarkSchemeText, questionContext, aiProvider, hackClubApiKey, markingModel, enableReasoning } = req.body;
     if (typeof image !== 'string' || image.length < 100) {
       res.status(400).json({ error: 'Invalid image data' });
       return;
@@ -186,12 +186,19 @@ Return JSON only, no markdown formatting:
 - score (number): marks awarded
 - totalMarks (number): total marks available
 - feedback (string): detailed feedback referencing specific mark scheme criteria
-- breakdown: array of { criterion: string, awarded: boolean, marks: number }`,
+- breakdown: array of { criterion: string, awarded: boolean, marks: number }
+- howToGainMarks (string): for each mark NOT awarded, explain concisely what the student would need to add, change, or improve to earn that mark. Be specific and actionable. If the student got full marks, set this to an empty string.`,
       messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 2000,
       abortSignal: controller.signal,
       ...(usingHackClub
-        ? {}
+        ? {
+            providerOptions: {
+              openrouter: {
+                reasoning: { enabled: enableReasoning !== false, effort: 'medium' },
+              },
+            },
+          }
         : {
             providerOptions: {
               google: {

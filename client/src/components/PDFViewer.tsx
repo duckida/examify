@@ -25,6 +25,7 @@ interface Props {
   onReset: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  onRename: (filename: string) => void;
   marking: boolean;
   markError: string | null;
   markResult: MarkResult | null;
@@ -40,6 +41,8 @@ interface Props {
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
   parseError: string | null;
+  enableReasoning: boolean;
+  onEnableReasoningChange: (enabled: boolean) => void;
 }
 
 type ToolMode = 'draw' | 'text' | 'select' | 'erase';
@@ -52,10 +55,11 @@ export default function PDFViewer({
   pdfInfo, markSchemeInfo, markSchemeTotalPages, onMarkSchemeUpload,
   currentPage, totalPages, onPageChange,
   annotations, onAnnotationsChange,
-  onMark, onReset, onExport, onImport, marking, markError, markResult, marks,
+  onMark, onReset, onExport, onImport, onRename, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
   parsedMarkSchemeText, parsingMarkScheme, parseError,
+  enableReasoning, onEnableReasoningChange,
 }: Props) {
   const [pageImage, setPageImage] = useState<string | null>(null);
   const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
@@ -74,6 +78,14 @@ export default function PDFViewer({
   const handleImportClick = useCallback(() => {
     importRef.current?.click();
   }, []);
+
+  const handleRenameClick = useCallback(() => {
+    const next = window.prompt('Rename session / PDF', pdfInfo.filename);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === pdfInfo.filename) return;
+    onRename(trimmed);
+  }, [pdfInfo.filename, onRename]);
 
   const zoomIn = () => setZoom(z => Math.min(z + ZOOM_STEP, ZOOM_MAX));
   const zoomOut = () => setZoom(z => Math.max(z - ZOOM_STEP, ZOOM_MIN));
@@ -190,7 +202,13 @@ export default function PDFViewer({
               <polyline points="14 2 14 8 20 8" />
             </svg>
           </button>
-          <span className="file-name">{pdfInfo.filename}</span>
+          <span className="file-name" title={pdfInfo.filename}>{pdfInfo.filename}</span>
+          <button className="btn-icon btn-rename" onClick={handleRenameClick} title="Rename session / PDF">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+          </button>
 
           <div className="toolbar-divider" />
 
@@ -379,6 +397,19 @@ export default function PDFViewer({
                         onChange={(e) => onParsingModelChange(e.target.value)}
                       />
                       <span className="settings-field-desc">Model used for extracting mark scheme text</span>
+                    </div>
+                    <div className="settings-divider" />
+                    <div className="settings-field">
+                      <label className="settings-field-label">
+                        <input
+                          type="checkbox"
+                          className="settings-toggle"
+                          checked={enableReasoning}
+                          onChange={(e) => onEnableReasoningChange(e.target.checked)}
+                        />
+                        <span>Thinking</span>
+                      </label>
+                      <span className="settings-field-desc">Enable model reasoning for deeper analysis</span>
                     </div>
                   </>
                 )}

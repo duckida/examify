@@ -209,7 +209,13 @@ export default function MarkPanel({
               ))}
             </div>
           )}
-        </div>
+          {markResult.howToGainMarks && (
+            <div className="result-how-to-gain">
+              <h4>How to gain the marks you missed</h4>
+              <p>{markResult.howToGainMarks}</p>
+            </div>
+          )}
+        </div> 
       )}
     </div>
   );

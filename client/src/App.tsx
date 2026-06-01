@@ -30,6 +30,9 @@ export default function App() {
   const [parsingModel, setParsingModel] = useState(
     () => localStorage.getItem('parsingModel') || '',
   );
+  const [enableReasoning, setEnableReasoning] = useState(
+    () => localStorage.getItem('enableReasoning') !== 'false',
+  );
   const [parsedMarkSchemeText, setParsedMarkSchemeText] = useState<string | null>(null);
   const [parsingMarkScheme, setParsingMarkScheme] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -189,6 +192,10 @@ export default function App() {
     setMarkError(null);
   }, []);
 
+  const handleRename = useCallback((filename: string) => {
+    setPDFInfo(prev => prev ? { ...prev, filename } : prev);
+  }, []);
+
   const handleReset = useCallback(() => {
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
@@ -297,6 +304,7 @@ export default function App() {
             aiProvider,
             hackClubApiKey: aiProvider === 'hackclub' ? hackClubApiKey : undefined,
             markingModel: markingModel || undefined,
+            enableReasoning: aiProvider === 'hackclub' ? enableReasoning : undefined,
           }),
         });
         if (!res.ok) {
@@ -312,7 +320,7 @@ export default function App() {
         setMarking(false);
       }
     },
-    [currentPage, aiProvider, hackClubApiKey, parsedMarkSchemeText, markingModel],
+    [currentPage, aiProvider, hackClubApiKey, parsedMarkSchemeText, markingModel, enableReasoning],
   );
 
   const currentMark = marks.find(m => m.pageNumber === currentPage)?.result ?? null;
@@ -351,6 +359,7 @@ export default function App() {
       onReset={handleReset}
       onExport={handleExport}
       onImport={handleImport}
+      onRename={handleRename}
       marking={marking || parsingMarkScheme}
       markError={markError}
       markResult={currentMark}
@@ -374,6 +383,11 @@ export default function App() {
       onParsingModelChange={(m) => {
         setParsingModel(m);
         localStorage.setItem('parsingModel', m);
+      }}
+      enableReasoning={enableReasoning}
+      onEnableReasoningChange={(v) => {
+        setEnableReasoning(v);
+        localStorage.setItem('enableReasoning', String(v));
       }}
       parsedMarkSchemeText={parsedMarkSchemeText}
       parsingMarkScheme={parsingMarkScheme}

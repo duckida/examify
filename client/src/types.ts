@@ -33,6 +33,7 @@ export interface MarkResult {
   totalMarks: number;
   feedback: string;
   breakdown: { criterion: string; awarded: boolean; marks: number }[];
+  howToGainMarks?: string;
 }
 
 export interface MarkRecord {
