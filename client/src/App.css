@@ -1100,5 +1100,8 @@
   font-size: 13px;
   line-height: 1.6;
   color: var(--color-text-primary);
+}
+
+.pre-wrap {
   white-space: pre-wrap;
 }
