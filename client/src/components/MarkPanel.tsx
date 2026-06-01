@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { MarkResult, MarkRecord, PDFInfo, DrawingPath, TextBoxData } from '../types';
+import Markdown from 'react-markdown';
 import ScoreSection from './ScoreSection';
 
 interface Props {
@@ -192,9 +193,15 @@ export default function MarkPanel({
             <div className="result-label">Marks Awarded</div>
           </div>
 
+          {markResult.howToGainMarks && (
+            <div className="result-how-to-gain">
+              <h4>How to gain the marks you missed</h4>
+              <Markdown>{markResult.howToGainMarks}</Markdown>
+            </div>
+          )}
           <div className="result-feedback">
             <h4>Feedback</h4>
-            <p>{markResult.feedback}</p>
+            <Markdown>{markResult.feedback}</Markdown>
           </div>
 
           {markResult.breakdown && markResult.breakdown.length > 0 && (
@@ -207,12 +214,6 @@ export default function MarkPanel({
                   <span className="breakdown-marks">{item.marks}/{item.marks}</span>
                 </div>
               ))}
-            </div>
-          )}
-          {markResult.howToGainMarks && (
-            <div className="result-how-to-gain">
-              <h4>How to gain the marks you missed</h4>
-              <p>{markResult.howToGainMarks}</p>
             </div>
           )}
         </div> 
