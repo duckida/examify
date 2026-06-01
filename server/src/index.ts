@@ -182,12 +182,12 @@ app.post('/api/mark', async (req, res) => {
 The student wrote their answers in text boxes overlaid on the exam paper page. The text from those text boxes is provided below. Treat this text as the student's official answer.
 The page image also shows these text boxes rendered visually. Use both the text and the image to assess the answer.
 The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
-Return JSON only. Do NOT use markdown. Use plain text only.
+Return JSON only. Use markdown for formatting in the text fields.
 - score (number): marks awarded
 - totalMarks (number): total marks available
-- feedback (string): plain text. Use short, concise bullets — ONE bullet per line, each line starting with "- ". Highlight what the student got right, what they missed, and the relevant mark scheme point for each. Keep it scannable. No markdown characters (no *, **, #, etc.). Never join bullets with dashes on the same line.
+- feedback (string): detailed feedback using markdown. Use bullet lists (-) and bold (**) to highlight what the student got right and what they missed, referencing specific mark scheme criteria. Keep it scannable.
 - breakdown: array of { criterion: string, awarded: boolean, marks: number }
-- howToGainMarks (string): plain text. ONE bullet per line, each line starting with "- ". For each missed mark, state the mark scheme point/definition needed and what the student should add or change to earn it. Be specific and actionable. If the student got full marks, set this to an empty string. Never join bullets with dashes on the same line.`,
+- howToGainMarks (string): markdown-formatted guidance. Use bullet lists (-) with bold (**) for emphasis. For each mark not awarded, state the mark scheme point/definition needed and what the student should add or change to earn it. Be specific and actionable. If the student got full marks, set this to an empty string.`,
       messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 2000,
       abortSignal: controller.signal,
