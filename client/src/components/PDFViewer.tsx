@@ -24,7 +24,6 @@ interface Props {
   onMark: (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => void;
   onReset: () => void;
   onExport: () => void;
-  onImport: (file: File) => void;
   onRename: (filename: string) => void;
   marking: boolean;
   markError: string | null;
@@ -55,7 +54,7 @@ export default function PDFViewer({
   pdfInfo, markSchemeInfo, markSchemeTotalPages, onMarkSchemeUpload,
   currentPage, totalPages, onPageChange,
   annotations, onAnnotationsChange,
-  onMark, onReset, onExport, onImport, onRename, marking, markError, markResult, marks,
+  onMark, onReset, onExport, onRename, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
   parsedMarkSchemeText, parsingMarkScheme, parseError,
@@ -65,7 +64,7 @@ export default function PDFViewer({
   const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
   const [pageText, setPageText] = useState('');
   const [toolMode, setToolMode] = useState<ToolMode>('draw');
-  const [drawColor, setDrawColor] = useState('#ef4444');
+  const [drawColor, setDrawColor] = useState('#000000');
   const [zoom, setZoom] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [showMsModal, setShowMsModal] = useState(false);
@@ -73,11 +72,6 @@ export default function PDFViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
-
-  const handleImportClick = useCallback(() => {
-    importRef.current?.click();
-  }, []);
 
   const handleRenameClick = useCallback(() => {
     const next = window.prompt('Rename session / PDF', pdfInfo.filename);
@@ -89,7 +83,6 @@ export default function PDFViewer({
 
   const zoomIn = () => setZoom(z => Math.min(z + ZOOM_STEP, ZOOM_MAX));
   const zoomOut = () => setZoom(z => Math.max(z - ZOOM_STEP, ZOOM_MIN));
-  const zoomReset = () => setZoom(1);
 
   // Load PDF document when URL changes
   useEffect(() => {
@@ -196,10 +189,9 @@ export default function PDFViewer({
     <div className="pdf-viewer-layout">
       <div className="toolbar">
         <div className="toolbar-left">
-          <button className="btn-icon" onClick={onReset} title="Upload new PDF">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
+          <button className="btn-icon" onClick={onReset} title="Home">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9.5L12 3l9 6.5V20a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2V9.5z" />
             </svg>
           </button>
           <span className="file-name" title={pdfInfo.filename}>{pdfInfo.filename}</span>
@@ -207,6 +199,13 @@ export default function PDFViewer({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+          </button>
+          <button className="btn-icon" onClick={onExport} title="Save / export .examify file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
             </svg>
           </button>
 
@@ -217,9 +216,6 @@ export default function PDFViewer({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-            </button>
-            <button className="btn-zoom-label" onClick={zoomReset} title="Reset zoom">
-              {Math.round(zoom * 100)}%
             </button>
             <button className="btn-zoom" onClick={zoomIn} title="Zoom in" disabled={zoom >= ZOOM_MAX}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -265,6 +261,16 @@ export default function PDFViewer({
               </svg>
             </button>
             <button
+              className={`btn-tool ${toolMode === 'erase' ? 'active' : ''}`}
+              onClick={() => setToolMode('erase')}
+              title="Erase drawing"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8l9.6-9.6a2 2 0 0 1 2.8 0l5.6 5.6a2 2 0 0 1 0 2.8L13 18" />
+                <path d="M6.5 13.5l4 4" />
+              </svg>
+            </button>
+            <button
               className={`btn-tool ${toolMode === 'text' ? 'active' : ''}`}
               onClick={() => setToolMode('text')}
               title="Add text box"
@@ -285,16 +291,15 @@ export default function PDFViewer({
                 <path d="M13 13l6 6" />
               </svg>
             </button>
-            <button
-              className={`btn-tool ${toolMode === 'erase' ? 'active' : ''}`}
-              onClick={() => setToolMode('erase')}
-              title="Erase drawing"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8l9.6-9.6a2 2 0 0 1 2.8 0l5.6 5.6a2 2 0 0 1 0 2.8L13 18" />
-                <path d="M6.5 13.5l4 4" />
-              </svg>
-            </button>
+          </div>
+
+          <div className="color-picker">
+            <input
+              type="color"
+              value={drawColor}
+              onChange={(e) => setDrawColor(e.target.value)}
+              title="Pen color"
+            />
           </div>
 
           <div className="toolbar-divider" />
@@ -311,17 +316,8 @@ export default function PDFViewer({
               <line x1="9" y1="15" x2="12" y2="12" />
               <line x1="15" y1="15" x2="12" y2="12" />
             </svg>
-            {markSchemeInfo ? `MS (${markSchemeTotalPages}p)` : 'MS'}
+            {markSchemeInfo ? `Mark Scheme added (${markSchemeTotalPages}p)` : 'Add Mark Scheme'}
           </button>
-
-          <div className="color-picker">
-            <input
-              type="color"
-              value={drawColor}
-              onChange={(e) => setDrawColor(e.target.value)}
-              title="Drawing color"
-            />
-          </div>
 
           <div className="settings-container" ref={settingsRef}>
             <button
@@ -416,34 +412,6 @@ export default function PDFViewer({
               </div>
             )}
           </div>
-
-          <div className="toolbar-divider" />
-
-          <button className="btn-icon" onClick={onExport} title="Export .examify file">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
-          <button className="btn-icon" onClick={handleImportClick} title="Import .examify file">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-          </button>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".examify,application/json"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onImport(file);
-              e.target.value = '';
-            }}
-          />
         </div>
 
       </div>
