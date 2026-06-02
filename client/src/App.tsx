@@ -3,6 +3,7 @@ import type { PDFInfo, PageAnnotations, MarkResult, MarkRecord } from './types';
 import UploadPage from './components/UploadPage';
 import PDFViewer from './components/PDFViewer';
 import { saveSession, loadSessionAsync, clearLastSessionKey } from './utils/storage';
+import { arrayBufferToBase64, getPDFPageCountFromBuffer } from './utils/pdf';
 import './App.css';
 
 const PARSE_TIMEOUT_MS = 130000;
@@ -41,8 +42,94 @@ export default function App() {
   const msUrlRef = useRef<string | null>(null);
   const parseAbortRef = useRef<AbortController | null>(null);
 
+  // Handle /import?qp=...&ms=... route
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qp = params.get('qp');
+    const ms = params.get('ms');
+    if (!window.location.pathname.startsWith('/import') || !qp) return;
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const fetches: Promise<Response>[] = [
+          fetch(`/api/fetch-pdf?url=${encodeURIComponent(qp)}`),
+        ];
+        if (ms) fetches.push(fetch(`/api/fetch-pdf?url=${encodeURIComponent(ms)}`));
+        const [qpRes, msRes] = await Promise.all(fetches);
+
+        if (!qpRes.ok) {
+          const err = await qpRes.json().catch(() => ({ error: 'Failed to fetch PDF' }));
+          throw new Error(err.error || `HTTP ${qpRes.status}`);
+        }
+
+        const [qpBuffer, msBuffer] = await Promise.all([
+          qpRes.arrayBuffer(),
+          msRes?.ok ? msRes.arrayBuffer() : Promise.resolve(null),
+        ]);
+
+        if (cancelled) return;
+
+        // Load question paper
+        const qpBlob = new Blob([qpBuffer], { type: 'application/pdf' });
+        const qpUrl = URL.createObjectURL(qpBlob);
+        const qpBase64 = arrayBufferToBase64(qpBuffer);
+        const qpFilename = qp.split('/').pop() || 'question-paper.pdf';
+        const qpPages = await getPDFPageCountFromBuffer(qpBuffer);
+        const qpInfo: PDFInfo = { id: qpFilename, filename: qpFilename, url: qpUrl, data: qpBase64 };
+
+        if (cancelled) return;
+
+        if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+        if (msUrlRef.current) URL.revokeObjectURL(msUrlRef.current);
+        if (parseAbortRef.current) parseAbortRef.current.abort();
+        pdfUrlRef.current = qpUrl;
+        msUrlRef.current = null;
+        setPDFInfo(qpInfo);
+        setTotalPages(qpPages);
+        setCurrentPage(1);
+        setAnnotations({});
+        setMarks([]);
+        setParsedMarkSchemeText(null);
+        setParseError(null);
+
+        // Load mark scheme if provided
+        if (ms && msBuffer) {
+          const msBlob = new Blob([msBuffer], { type: 'application/pdf' });
+          const msUrl = URL.createObjectURL(msBlob);
+          const msBase64 = arrayBufferToBase64(msBuffer);
+          const msPages = await getPDFPageCountFromBuffer(msBuffer);
+          const msFilename = ms.split('/').pop() || 'mark-scheme.pdf';
+          const msInfo: PDFInfo = { id: msFilename, filename: msFilename, url: msUrl, data: msBase64 };
+
+          if (cancelled) return;
+          msUrlRef.current = msUrl;
+          setMarkSchemeInfo(msInfo);
+          setMarkSchemeTotalPages(msPages);
+        }
+
+        // Clean up URL
+        window.history.replaceState({}, '', '/');
+        setLoading(false);
+      } catch (e: any) {
+        setMarkError(`Import failed: ${e.message}`);
+        setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
   // Restore session from IndexedDB on mount
   useEffect(() => {
+    // If we're on the /import route, skip session restore — import effect handles it
+    if (window.location.pathname.startsWith('/import')) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('qp')) {
+        return; // import effect will set loading
+      }
+    }
     let cancelled = false;
     (async () => {
       try {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import type { PDFInfo } from '../types';
 import { getAllSavedSessionKeys, deleteSession, loadSessionAsync } from '../utils/storage';
+import { arrayBufferToBase64, getPDFPageCountFromBuffer } from '../utils/pdf';
 import { FEATURED_PAPERS, SUBJECT_COLORS, type FeaturedPaper } from '../data/featuredPapers';
 
 interface Props {
@@ -17,31 +18,6 @@ interface Props {
     parsedMarkSchemeText: string | null;
   }) => void;
   onImport: (file: File) => void;
-}
-
-const pdfjsWorkerPromise = (async () => {
-  const { GlobalWorkerOptions } = await import('pdfjs-dist');
-  GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-})();
-
-async function getPDFPageCountFromBuffer(buffer: ArrayBuffer): Promise<number> {
-  await pdfjsWorkerPromise;
-  const pdfjsLib = await import('pdfjs-dist');
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const numPages = pdf.numPages;
-  pdf.destroy();
-  return numPages;
-}
-
-function arrayBufferToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  const chunk = 8192;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
 }
 
 export default function UploadPage({ onUploadComplete, onMarkSchemeUpload, onRestoreSession, onImport }: Props) {

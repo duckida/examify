@@ -17,8 +17,8 @@ interface SavedSession {
 }
 
 function getStorageKey(pdfInfo: PDFInfo): string {
-  if (pdfInfo.filename && pdfInfo.filename !== 'remote.pdf') {
-    return PREFIX + pdfInfo.filename;
+  if (pdfInfo.id) {
+    return PREFIX + pdfInfo.id;
   }
   if (pdfInfo.data) {
     return PREFIX + 'pdf_' + btoa(pdfInfo.data.slice(0, 64)).replace(/[/+=]/g, '_');
