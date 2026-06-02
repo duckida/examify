@@ -338,6 +338,7 @@ export default function App() {
     return (
       <UploadPage
         onUploadComplete={handleUploadComplete}
+        onMarkSchemeUpload={handleMarkSchemeUpload}
         onRestoreSession={handleRestoreSession}
         onImport={handleImport}
       />
@@ -358,7 +359,6 @@ export default function App() {
       onMark={handleMark}
       onReset={handleReset}
       onExport={handleExport}
-      onImport={handleImport}
       onRename={handleRename}
       marking={marking || parsingMarkScheme}
       markError={markError}
