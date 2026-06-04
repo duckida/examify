@@ -57,16 +57,18 @@ app.post('/api/render-page', async (req, res) => {
 });
 
 const FREE_MODEL = 'gemini-3.1-flash-lite';
-const HACKCLUB_MODEL = 'qwen/qwen3.6-flash';
+const HACKCLUB_MODEL = 'xiaomi/mimo-v2.5';
+const HACKCLUB_PARSING_MODEL = 'google/gemini-3.1-flash-lite';
 const MAX_RETRIES = 3;
 
-function getModel(provider?: string, hackClubApiKey?: string, modelName?: string) {
+function getModel(provider?: string, hackClubApiKey?: string, modelName?: string, purpose?: 'marking' | 'parsing') {
   if (provider === 'hackclub' && hackClubApiKey) {
     const hackclub = createOpenRouter({
       apiKey: hackClubApiKey,
       baseUrl: 'https://ai.hackclub.com/proxy/v1',
     });
-    return hackclub(modelName || process.env.LLM_MODEL || HACKCLUB_MODEL);
+    const defaultModel = purpose === 'parsing' ? HACKCLUB_PARSING_MODEL : HACKCLUB_MODEL;
+    return hackclub(modelName || process.env.LLM_MODEL || defaultModel);
   }
   return google(FREE_MODEL);
 }
@@ -88,6 +90,44 @@ async function generateTextWithRetry(params: Parameters<typeof generateText>[0],
   throw lastError;
 }
 
+async function generateJsonWithRetry<T>(
+  params: Parameters<typeof generateText>[0],
+  parse: (text: string) => T | null,
+  retries = MAX_RETRIES,
+): Promise<T> {
+  let lastText = '';
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const result = await generateTextWithRetry(params);
+      const text = result.text.trim();
+      const parsed = parse(text);
+      if (parsed !== null) return parsed;
+      lastText = text;
+      console.error(`LLM response did not contain valid JSON (attempt ${attempt + 1}/${retries})`);
+    } catch (error: any) {
+      lastError = error;
+      if (error.name === 'AbortError') throw error;
+    }
+    if (attempt < retries - 1) {
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  const err: any = lastError || new Error('LLM response did not contain valid JSON after retries');
+  err.raw = lastText;
+  throw err;
+}
+
+function extractJson(text: string): any | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
 app.post('/api/parse-mark-scheme', async (req, res) => {
   try {
     const { markSchemePdf, aiProvider, hackClubApiKey, model } = req.body;
@@ -105,11 +145,17 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000);
 
-    const llmModel = getModel(aiProvider, hackClubApiKey, model);
+    const llmModel = getModel(aiProvider, hackClubApiKey, model, 'parsing');
 
     const result = await generateTextWithRetry({
       model: llmModel,
-      system: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
+      system: [
+        {
+          type: 'text' as const,
+          text: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
+          ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
+        },
+      ],
       messages: [
         {
           role: 'user',
@@ -174,11 +220,14 @@ app.post('/api/mark', async (req, res) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const model = getModel(aiProvider, hackClubApiKey, markingModel);
+    const model = getModel(aiProvider, hackClubApiKey, markingModel, 'marking');
 
-    const result = await generateTextWithRetry({
+    const parsed = await generateJsonWithRetry({
       model,
-      system: `You are an expert examiner marking student answers against official mark schemes.
+      system: [
+        {
+          type: 'text' as const,
+          text: `You are an expert examiner marking student answers against official mark schemes.
 The student wrote their answers in text boxes overlaid on the exam paper page. The text from those text boxes is provided below. Treat this text as the student's official answer.
 The page image also shows these text boxes rendered visually. Use both the text and the image to assess the answer.
 The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
@@ -188,6 +237,9 @@ Return JSON only. Use markdown for formatting in the text fields.
 - feedback (string): detailed feedback using markdown. Use bullet lists (-) and bold (**) to highlight what the student got right and what they missed, referencing specific mark scheme criteria. Keep it scannable.
 - breakdown: array of { criterion: string, awarded: boolean, marks: number }
 - howToGainMarks (string): markdown-formatted guidance. Use bullet lists (-) with bold (**) for emphasis. For each mark not awarded, state the mark scheme point/definition needed and what the student should add or change to earn it. Be specific and actionable. If the student got full marks, set this to an empty string.`,
+          ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
+        },
+      ],
       messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 2000,
       abortSignal: controller.signal,
@@ -206,19 +258,17 @@ Return JSON only. Use markdown for formatting in the text fields.
               } satisfies GoogleLanguageModelOptions,
             },
           }),
-    });
+    }, extractJson);
 
     clearTimeout(timeout);
 
-    const text = result.text.trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      res.status(500).json({ error: 'LLM response did not contain valid JSON', raw: text });
-      return;
-    }
-    res.json(JSON.parse(jsonMatch[0]));
+    res.json(parsed);
   } catch (error: any) {
     console.error('Marking error:', error);
+    if (error.raw) {
+      res.status(500).json({ error: 'LLM response did not contain valid JSON after retries', raw: error.raw });
+      return;
+    }
     const message = error.name === 'AbortError' ? 'AI marking timed out' : (error.message || 'Failed to mark');
     res.status(500).json({ error: message });
   }

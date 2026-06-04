@@ -177,8 +177,6 @@ export default function MarkPanel({
       {markError && (
         <div className="mark-error">
           <strong>Error:</strong> {markError}
-          <br />
-          <small>Make sure to set the GOOGLE_GENERATIVE_AI_API_KEY environment variable on the server.</small>
         </div>
       )}
 
