@@ -377,7 +377,7 @@ export default function PDFViewer({
                       <input
                         type="text"
                         className="settings-key-input"
-                        placeholder="qwen/qwen3.6-flash"
+                        placeholder="xiaomi/mimo-v2.5"
                         value={markingModel}
                         onChange={(e) => onMarkingModelChange(e.target.value)}
                       />
@@ -388,7 +388,7 @@ export default function PDFViewer({
                       <input
                         type="text"
                         className="settings-key-input"
-                        placeholder="qwen/qwen3.6-flash"
+                        placeholder="google/gemini-3.1-flash-lite"
                         value={parsingModel}
                         onChange={(e) => onParsingModelChange(e.target.value)}
                       />

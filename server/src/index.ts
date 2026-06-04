@@ -149,14 +149,12 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
 
     const result = await generateTextWithRetry({
       model: llmModel,
-      system: [
+      messages: [
         {
-          type: 'text' as const,
-          text: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
+          role: 'system' as const,
+          content: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
           ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
         },
-      ],
-      messages: [
         {
           role: 'user',
           content: [
@@ -224,10 +222,10 @@ app.post('/api/mark', async (req, res) => {
 
     const parsed = await generateJsonWithRetry({
       model,
-      system: [
+      messages: [
         {
-          type: 'text' as const,
-          text: `You are an expert examiner marking student answers against official mark schemes.
+          role: 'system' as const,
+          content: `You are an expert examiner marking student answers against official mark schemes.
 The student wrote their answers in text boxes overlaid on the exam paper page. The text from those text boxes is provided below. Treat this text as the student's official answer.
 The page image also shows these text boxes rendered visually. Use both the text and the image to assess the answer.
 The mark scheme text is provided directly. Use it to assess the student's answer against each criterion.
@@ -239,8 +237,8 @@ Return JSON only. Use markdown for formatting in the text fields.
 - howToGainMarks (string): markdown-formatted guidance. Use bullet lists (-) with bold (**) for emphasis. For each mark not awarded, state the mark scheme point/definition needed and what the student should add or change to earn it. Be specific and actionable. If the student got full marks, set this to an empty string.`,
           ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
         },
+        { role: 'user', content: userContent },
       ],
-      messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 2000,
       abortSignal: controller.signal,
       ...(usingHackClub
