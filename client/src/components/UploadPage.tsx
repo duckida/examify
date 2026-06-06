@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type FormEvent } from 'react';
 import type { PDFInfo } from '../types';
 import { getAllSavedSessionKeys, deleteSession, loadSessionAsync } from '../utils/storage';
 import { arrayBufferToBase64, getPDFPageCountFromBuffer } from '../utils/pdf';
+import { track } from '../utils/analytics';
 import { FEATURED_PAPERS, SUBJECT_COLORS, type FeaturedPaper } from '../data/featuredPapers';
 
 interface Props {
@@ -137,6 +138,7 @@ export default function UploadPage({ onUploadComplete, onMarkSchemeUpload, onRes
   const handleFeaturedPaper = async (paper: FeaturedPaper) => {
     setLoadingPaper(paper.id);
     setError(null);
+    track('featured_paper_opened', { paperId: paper.id, subject: paper.subject, year: paper.year, paper: paper.paper, examBoard: paper.examBoard });
     try {
       const [qpRes, msRes] = await Promise.all([
         fetch(`/api/fetch-pdf?url=${encodeURIComponent(paper.questionPaperUrl)}`),
@@ -224,9 +226,10 @@ export default function UploadPage({ onUploadComplete, onMarkSchemeUpload, onRes
       </div>
 
       <div className="upload-card">
-        <img src="/icon.svg" alt="Examify" className="upload-logo" />
-        <h1>Examify</h1>
-        <p className="subtitle">AI-powered past paper marking</p>
+        <div className="upload-brand">
+          <img src="/icon.svg" alt="" className="upload-logo" />
+          <h1>Examify</h1>
+        </div>
         <form onSubmit={onSubmit}>
           <div
             className={`drop-zone ${dragOver ? 'drag-over' : ''}`}

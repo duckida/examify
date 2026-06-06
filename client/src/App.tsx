@@ -4,6 +4,7 @@ import UploadPage from './components/UploadPage';
 import PDFViewer from './components/PDFViewer';
 import { saveSession, loadSessionAsync, clearLastSessionKey } from './utils/storage';
 import { arrayBufferToBase64, getPDFPageCountFromBuffer } from './utils/pdf';
+import { track } from './utils/analytics';
 import './App.css';
 
 const PARSE_TIMEOUT_MS = 130000;
@@ -217,6 +218,7 @@ export default function App() {
         const data = await res.json();
         setParsedMarkSchemeText(data.text);
         setParseError(null);
+        track('mark_scheme_parsed', { provider: aiProvider });
       } else {
         const err = await res.json();
         const msg = err.error || 'Failed to parse mark scheme';
@@ -250,6 +252,7 @@ export default function App() {
     setParseError(null);
     setAnnotations({});
     setMarks([]);
+    track('pdf_uploaded', { pages });
   }, []);
 
   const handleRestoreSession = useCallback((session: {
@@ -322,6 +325,7 @@ export default function App() {
     a.download = `${pdfInfo.filename.replace(/\.[^.]+$/, '')}.examify`;
     a.click();
     URL.revokeObjectURL(url);
+    track('session_exported', { marks: marks.length });
   }, [pdfInfo, markSchemeInfo, markSchemeTotalPages, totalPages, currentPage, annotations, marks, parsedMarkSchemeText]);
 
   const handleImport = useCallback(async (file: File) => {
@@ -357,6 +361,7 @@ export default function App() {
       setParseError(null);
       setMarkError(null);
       setCurrentPage(1);
+      track('session_imported', { marks: (data.marks ?? []).length });
     } catch (e: any) {
       setMarkError(`Import failed: ${e.message}`);
     }
@@ -371,6 +376,7 @@ export default function App() {
     msUrlRef.current = info.url;
     setMarkSchemeInfo(info);
     setMarkSchemeTotalPages(totalPages);
+    track('mark_scheme_uploaded', { pages: totalPages });
     triggerParse(info);
   }, [triggerParse]);
 
@@ -378,6 +384,7 @@ export default function App() {
     async (imageBase64: string, questionContext?: string, pageText?: string, textBoxesText?: string) => {
       setMarking(true);
       setMarkError(null);
+      track('mark_requested', { provider: aiProvider });
       try {
         const res = await fetch('/api/mark', {
           method: 'POST',
@@ -401,8 +408,10 @@ export default function App() {
         const result: MarkResult = await res.json();
         const record: MarkRecord = { pageNumber: currentPage, result, timestamp: Date.now() };
         setMarks(prev => [...prev.filter(m => m.pageNumber !== currentPage), record]);
+        track('mark_completed', { provider: aiProvider });
       } catch (e: any) {
         setMarkError(e.message);
+        track('mark_failed', { provider: aiProvider, error: e.message });
       } finally {
         setMarking(false);
       }
