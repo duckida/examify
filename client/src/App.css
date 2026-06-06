@@ -24,7 +24,7 @@
   width: 420px;
   flex-shrink: 0;
   text-align: left;
-  height: 480px;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -146,12 +146,12 @@
 .upload-card {
   background: var(--color-bg);
   border-radius: var(--radius-2xl);
-  padding: 48px;
+  padding: 36px 48px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   text-align: center;
   max-width: 500px;
   width: 100%;
-  height: 480px;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -173,7 +173,7 @@
 
 .subtitle {
   color: var(--color-text-secondary);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   font-size: 14px;
   flex-shrink: 0;
 }
@@ -181,7 +181,7 @@
 .drop-zone {
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-xl);
-  padding: 48px 24px;
+  padding: 28px 24px;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--color-text-secondary);
@@ -219,9 +219,9 @@
 
 /* Saved Papers */
 .saved-papers {
-  margin-top: 28px;
+  margin-top: 20px;
   border-top: 1px solid var(--color-border);
-  padding-top: 20px;
+  padding-top: 16px;
   text-align: left;
   flex: 1;
   min-height: 0;
