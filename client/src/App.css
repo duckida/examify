@@ -160,6 +160,13 @@
   flex-shrink: 0;
 }
 
+.upload-logo {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
 .upload-card h1 {
   font-size: 28px;
   font-weight: 700;

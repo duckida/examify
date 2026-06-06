@@ -224,6 +224,7 @@ export default function UploadPage({ onUploadComplete, onMarkSchemeUpload, onRes
       </div>
 
       <div className="upload-card">
+        <img src="/icon.svg" alt="Examify" className="upload-logo" />
         <h1>Examify</h1>
         <p className="subtitle">AI-powered past paper marking</p>
         <form onSubmit={onSubmit}>
