@@ -57,7 +57,7 @@ app.post('/api/render-page', async (req, res) => {
 });
 
 const FREE_MODEL = 'gemini-3.1-flash-lite';
-const HACKCLUB_MODEL = 'xiaomi/mimo-v2.5';
+const HACKCLUB_MODEL = 'qwen/qwen3.6-flash';
 const HACKCLUB_PARSING_MODEL = 'google/gemini-3.1-flash-lite';
 const MAX_RETRIES = 3;
 
