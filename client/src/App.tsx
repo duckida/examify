@@ -35,9 +35,45 @@ export default function App() {
   const [enableReasoning, setEnableReasoning] = useState(
     () => localStorage.getItem('enableReasoning') !== 'false',
   );
+  const [darkMode, setDarkMode] = useState<'light' | 'dark'>(
+    () => {
+      const saved = localStorage.getItem('darkMode');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    },
+  );
   const [parsedMarkSchemeText, setParsedMarkSchemeText] = useState<string | null>(null);
   const [parsingMarkScheme, setParsingMarkScheme] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+
+  // Apply dark mode class and update theme-color meta tag
+  useEffect(() => {
+    const html = document.documentElement;
+    if (darkMode === 'dark') {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', darkMode === 'dark' ? '#111111' : '#FEE500');
+  }, [darkMode]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('darkMode');
+      if (!saved) {
+        setDarkMode(e.matches ? 'dark' : 'light');
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const handleDarkModeChange = useCallback((mode: 'light' | 'dark') => {
+    setDarkMode(mode);
+    localStorage.setItem('darkMode', mode);
+  }, []);
 
   const pdfUrlRef = useRef<string | null>(null);
   const msUrlRef = useRef<string | null>(null);
@@ -488,6 +524,8 @@ export default function App() {
       parsedMarkSchemeText={parsedMarkSchemeText}
       parsingMarkScheme={parsingMarkScheme}
       parseError={parseError}
+      darkMode={darkMode}
+      onDarkModeChange={handleDarkModeChange}
     />
   );
 }

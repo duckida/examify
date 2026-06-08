@@ -57,6 +57,13 @@
   --color-bg: #FFFFFF;
   --color-bg-hover: #FAFAFA;
   --color-bg-muted: #F8F8F8;
+  --color-page-bg: #FFFFFF;
+
+  /* === SHADOWS === */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.2);
 
   /* === RADII — generous rounding === */
   --radius-lg: 0.75rem;
@@ -75,8 +82,17 @@
   --color-bg: #111111;
   --color-bg-hover: #1A1A1A;
   --color-bg-muted: #222222;
+  --color-page-bg: #1A1A1A;
   --color-primary-lighter: #2A2400;
   --color-primary-light: #3D3500;
+  --color-success-light: #064E3B;
+  --color-warning-light: #78350F;
+  --color-error-light: #7F1D1D;
+  --color-info-light: #1E3A5F;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 html, body, #root {

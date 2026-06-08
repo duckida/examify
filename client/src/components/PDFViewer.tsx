@@ -42,6 +42,8 @@ interface Props {
   parseError: string | null;
   enableReasoning: boolean;
   onEnableReasoningChange: (enabled: boolean) => void;
+  darkMode: 'light' | 'dark';
+  onDarkModeChange: (mode: 'light' | 'dark') => void;
 }
 
 type ToolMode = 'draw' | 'text' | 'select' | 'erase';
@@ -59,6 +61,7 @@ export default function PDFViewer({
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
   parsedMarkSchemeText, parsingMarkScheme, parseError,
   enableReasoning, onEnableReasoningChange,
+  darkMode, onDarkModeChange,
 }: Props) {
   const [pageImage, setPageImage] = useState<string | null>(null);
   const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
@@ -366,6 +369,30 @@ export default function PDFViewer({
                     />
                   </div>
                 )}
+
+                <div className="settings-divider" />
+
+                <div className="settings-header">Appearance</div>
+                <label className={`settings-option ${darkMode === 'light' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="darkMode"
+                    value="light"
+                    checked={darkMode === 'light'}
+                    onChange={() => onDarkModeChange('light')}
+                  />
+                  <span className="settings-option-label">Light mode</span>
+                </label>
+                <label className={`settings-option ${darkMode === 'dark' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="darkMode"
+                    value="dark"
+                    checked={darkMode === 'dark'}
+                    onChange={() => onDarkModeChange('dark')}
+                  />
+                  <span className="settings-option-label">Dark mode</span>
+                </label>
 
                 <div className="settings-divider" />
 
