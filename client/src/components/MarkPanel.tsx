@@ -31,18 +31,24 @@ export default function MarkPanel({
 }: Props) {
   const [context, setContext] = useState('');
   const [capturing, setCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   const captureAndMark = useCallback(async () => {
     if (!pdfData) return;
 
     setCapturing(true);
+    setCaptureError(null);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
       // Render the PDF page on the server
       const renderRes = await fetch('/api/render-page', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pdfData, pageNumber: currentPage }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (!renderRes.ok) {
         const err = await renderRes.json();
         throw new Error(err.error || 'Failed to render page');
@@ -111,6 +117,10 @@ export default function MarkPanel({
       onMark(base64, context || undefined);
     } catch (err: any) {
       setCapturing(false);
+      const msg = err.name === 'AbortError'
+        ? 'Rendering timed out. The PDF page may be too complex or the server is overloaded.'
+        : err.message || 'Failed to render page';
+      setCaptureError(msg);
       console.error('Capture failed:', err);
     }
   }, [pdfData, currentPage, pageDimensions, drawings, textBoxes, onMark, context]);
@@ -177,6 +187,12 @@ export default function MarkPanel({
       {markError && (
         <div className="mark-error">
           <strong>Error:</strong> {markError}
+        </div>
+      )}
+
+      {captureError && (
+        <div className="mark-error">
+          <strong>Render Error:</strong> {captureError}
         </div>
       )}
 

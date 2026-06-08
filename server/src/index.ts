@@ -43,11 +43,17 @@ app.post('/api/render-page', async (req, res) => {
     }
 
     const dataUrl = `data:application/pdf;base64,${pdfData}`;
-    const doc = await pdf(dataUrl, { scale: 2 });
+    const renderPromise = (async () => {
+      const doc = await pdf(dataUrl, { scale: 2 });
+      const pageBuffer = await doc.getPage(pageNumber || 1);
+      doc.destroy();
+      return pageBuffer;
+    })();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Page render timed out')), 30000),
+    );
 
-    const pageBuffer = await doc.getPage(pageNumber || 1);
-    doc.destroy();
-
+    const pageBuffer = await Promise.race([renderPromise, timeoutPromise]);
     const base64 = pageBuffer.toString('base64');
     res.json({ image: base64 });
   } catch (error: any) {
@@ -153,7 +159,6 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
         {
           role: 'system' as const,
           content: 'You are a PDF text extraction assistant. Extract ALL text from the provided PDF document. Return only the raw extracted text without any commentary, formatting, or JSON wrapper. Preserve the original content as faithfully as possible.',
-          ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
         },
         {
           role: 'user',
@@ -235,7 +240,6 @@ Return JSON only. Use markdown for formatting in the text fields.
 - feedback (string): detailed feedback using markdown. Use bullet lists (-) and bold (**) to highlight what the student got right and what they missed, referencing specific mark scheme criteria. Keep it scannable.
 - breakdown: array of { criterion: string, awarded: boolean, marks: number }
 - howToGainMarks (string): markdown-formatted guidance. Use bullet lists (-) with bold (**) for emphasis. For each mark not awarded, state the mark scheme point/definition needed and what the student should add or change to earn it. Be specific and actionable. If the student got full marks, set this to an empty string.`,
-          ...(usingHackClub ? { providerOptions: { openrouter: { cacheControl: { type: 'ephemeral' } } } } : {}),
         },
         { role: 'user', content: userContent },
       ],
