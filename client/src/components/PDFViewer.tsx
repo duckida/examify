@@ -415,7 +415,7 @@ export default function PDFViewer({
                       <input
                         type="text"
                         className="settings-key-input"
-                        placeholder="deepseek/deepseek-v4.1-flash"
+                        placeholder="google/gemini-3.5-flash-lite"
                         value={parsingModel}
                         onChange={(e) => onParsingModelChange(e.target.value)}
                       />
