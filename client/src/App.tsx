@@ -256,8 +256,15 @@ export default function App() {
         setParseError(null);
         track('mark_scheme_parsed', { provider: aiProvider });
       } else {
-        const err = await res.json();
-        const msg = err.error || 'Failed to parse mark scheme';
+        const text = await res.text();
+        let msg = 'Failed to parse mark scheme';
+        try {
+          const err = JSON.parse(text);
+          msg = err.error || msg;
+        } catch {
+          // Response wasn't JSON (e.g., HTML error page from proxy)
+          if (text) msg = text;
+        }
         setParseError(msg);
         console.error('Failed to parse mark scheme:', msg);
       }

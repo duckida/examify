@@ -63,8 +63,8 @@ app.post('/api/render-page', async (req, res) => {
 });
 
 const FREE_MODEL = 'gemini-flash-lite-latest';
-const HACKCLUB_MODEL = 'deepseek/deepseek-v4-flash-vision-exp';
-const HACKCLUB_PARSING_MODEL = 'google/gemini-flash-lite-latest';
+const HACKCLUB_MODEL = 'deepseek/deepseek-v4.1-flash';
+const HACKCLUB_PARSING_MODEL = 'deepseek/deepseek-v4.1-flash';
 const MAX_RETRIES = 3;
 
 function getModel(provider?: string, hackClubApiKey?: string, modelName?: string, purpose?: 'marking' | 'parsing') {
