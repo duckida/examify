@@ -404,7 +404,7 @@ export default function PDFViewer({
                       <input
                         type="text"
                         className="settings-key-input"
-                        placeholder="deepseek/deepseek-v4-flash-vision-exp"
+                        placeholder="deepseek/deepseek-v4.1-flash"
                         value={markingModel}
                         onChange={(e) => onMarkingModelChange(e.target.value)}
                       />
@@ -415,7 +415,7 @@ export default function PDFViewer({
                       <input
                         type="text"
                         className="settings-key-input"
-                        placeholder="google/gemini-flash-lite-latest"
+                        placeholder="deepseek/deepseek-v4.1-flash"
                         value={parsingModel}
                         onChange={(e) => onParsingModelChange(e.target.value)}
                       />
