@@ -5,9 +5,16 @@ export interface PDFInfo {
   data?: string; // base64 of the raw file content (for mark scheme PDFs)
 }
 
+export interface DrawingPoint {
+  x: number;
+  y: number;
+  /** Pressure-scaled stroke width at this point. Falls back to the path width. */
+  w?: number;
+}
+
 export interface DrawingPath {
   id: string;
-  points: { x: number; y: number }[];
+  points: DrawingPoint[];
   color: string;
   width: number;
 }

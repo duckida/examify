@@ -74,16 +74,18 @@ export default function MarkPanel({
       // Replay drawings scaled to match the rendered image size
       for (const path of drawings) {
         if (path.points.length < 2) continue;
-        ctx.beginPath();
-        ctx.strokeStyle = path.color;
-        ctx.lineWidth = path.width * scale;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.moveTo(path.points[0].x * scale, path.points[0].y * scale);
         for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x * scale, path.points[i].y * scale);
+          const from = path.points[i - 1];
+          const to = path.points[i];
+          ctx.beginPath();
+          ctx.strokeStyle = path.color;
+          ctx.lineWidth = (to.w ?? from.w ?? path.width) * scale;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.moveTo(from.x * scale, from.y * scale);
+          ctx.lineTo(to.x * scale, to.y * scale);
+          ctx.stroke();
         }
-        ctx.stroke();
       }
 
       // Render text boxes onto the image
