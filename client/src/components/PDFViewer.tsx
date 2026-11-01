@@ -69,13 +69,15 @@ export default function PDFViewer({
   const [toolMode, setToolMode] = useState<ToolMode>('draw');
   const [drawColor, setDrawColor] = useState('#000000');
   const [drawWidth, setDrawWidth] = useState(3);
+  const [showPenOptions, setShowPenOptions] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [showMsModal, setShowMsModal] = useState(false);
   const [pdfDocVersion, setPdfDocVersion] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const penOptionsRef = useRef<HTMLDivElement>(null);
 
   const handleRenameClick = useCallback(() => {
     const next = window.prompt('Rename session / PDF', pdfInfo.filename);
@@ -129,7 +131,7 @@ export default function PDFViewer({
       try {
         const page = await pdf.getPage(currentPage);
 
-        const container = containerRef.current;
+        const container = pageContainerRef.current;
         const maxWidth = container ? container.clientWidth - 48 : 800;
         const scale = maxWidth / page.getViewport({ scale: 1 }).width;
         const viewport = page.getViewport({ scale });
@@ -164,6 +166,18 @@ export default function PDFViewer({
     return () => { cancelled = true; };
   }, [currentPage, pdfDocVersion]);
 
+  // Close pen options on outside click
+  useEffect(() => {
+    if (!showPenOptions) return;
+    const handler = (e: MouseEvent) => {
+      if (penOptionsRef.current && !penOptionsRef.current.contains(e.target as Node)) {
+        setShowPenOptions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPenOptions]);
+
   // Close settings dropdown on outside click
   useEffect(() => {
     if (!showSettings) return;
@@ -175,6 +189,13 @@ export default function PDFViewer({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showSettings]);
+
+  // Scroll page container to top when changing pages
+  useEffect(() => {
+    if (pageContainerRef.current) {
+      pageContainerRef.current.scrollTop = 0;
+    }
+  }, [currentPage]);
 
   const handleDrawingChange = useCallback((drawings: DrawingPath[]) => {
     onAnnotationsChange({ ...annotations, drawings });
@@ -198,18 +219,12 @@ export default function PDFViewer({
               <path d="M3 9.5L12 3l9 6.5V20a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2V9.5z" />
             </svg>
           </button>
-          <span className="file-name" title={pdfInfo.filename}>{pdfInfo.filename}</span>
-          <button className="btn-icon btn-rename" onClick={handleRenameClick} title="Rename session / PDF">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-            </svg>
-          </button>
-          <button className="btn-icon" onClick={onExport} title="Save / export .examify file">
+          <span className="file-name clickable" onClick={handleRenameClick} title="Click to rename">{pdfInfo.filename}</span>
+          <button className="btn-icon" onClick={onExport} title="Download .examify file">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
           </button>
 
@@ -239,7 +254,7 @@ export default function PDFViewer({
             ←
           </button>
           <span className="page-indicator">
-            Page {currentPage} of {totalPages}
+            {currentPage}/{totalPages}
           </span>
           <button
             className={`btn-page ${currentPage >= totalPages ? 'disabled' : ''}`}
@@ -251,74 +266,97 @@ export default function PDFViewer({
         </div>
 
         <div className="toolbar-right">
-          <div className="tool-group">
-            <button
-              className={`btn-tool ${toolMode === 'draw' ? 'active' : ''}`}
-              onClick={() => setToolMode('draw')}
-              title="Draw"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                <path d="M2 2l7.586 7.586" />
-                <circle cx="11" cy="11" r="2" />
-              </svg>
-            </button>
-            <button
-              className={`btn-tool ${toolMode === 'erase' ? 'active' : ''}`}
-              onClick={() => setToolMode('erase')}
-              title="Erase drawing"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8l9.6-9.6a2 2 0 0 1 2.8 0l5.6 5.6a2 2 0 0 1 0 2.8L13 18" />
-                <path d="M6.5 13.5l4 4" />
-              </svg>
-            </button>
-            <button
-              className={`btn-tool ${toolMode === 'text' ? 'active' : ''}`}
-              onClick={() => setToolMode('text')}
-              title="Add text box"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="4 7 4 4 20 4 20 7" />
-                <line x1="9" y1="20" x2="15" y2="20" />
-                <line x1="12" y1="4" x2="12" y2="20" />
-              </svg>
-            </button>
-            <button
-              className={`btn-tool ${toolMode === 'select' ? 'active' : ''}`}
-              onClick={() => setToolMode('select')}
-              title="Select / move"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
-                <path d="M13 13l6 6" />
-              </svg>
-            </button>
+          <div className="pen-control" ref={penOptionsRef}>
+            <div className="tool-group">
+              <button
+                className={`btn-tool ${toolMode === 'draw' ? 'active' : ''}`}
+                onClick={() => {
+                  setToolMode('draw');
+                  setShowPenOptions(v => (toolMode === 'draw' ? !v : true));
+                }}
+                title="Pen"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                  <path d="M2 2l7.586 7.586" />
+                  <circle cx="11" cy="11" r="2" />
+                </svg>
+              </button>
+              <button
+                className={`btn-tool ${toolMode === 'erase' ? 'active' : ''}`}
+                onClick={() => { setToolMode('erase'); setShowPenOptions(false); }}
+                title="Erase drawing"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8l9.6-9.6a2 2 0 0 1 2.8 0l5.6 5.6a2 2 0 0 1 0 2.8L13 18" />
+                  <path d="M6.5 13.5l4 4" />
+                </svg>
+              </button>
+              <button
+                className={`btn-tool ${toolMode === 'text' ? 'active' : ''}`}
+                onClick={() => { setToolMode('text'); setShowPenOptions(false); }}
+                title="Add text box"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="4 7 4 4 20 4 20 7" />
+                  <line x1="9" y1="20" x2="15" y2="20" />
+                  <line x1="12" y1="4" x2="12" y2="20" />
+                </svg>
+              </button>
+              <button
+                className={`btn-tool ${toolMode === 'select' ? 'active' : ''}`}
+                onClick={() => { setToolMode('select'); setShowPenOptions(false); }}
+                title="Select / move"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                  <path d="M13 13l6 6" />
+                </svg>
+              </button>
+            </div>
+
+            {toolMode === 'draw' && showPenOptions && (
+              <div className="pen-options-popover">
+                <div className="pen-options">
+                  <input
+                    type="color"
+                    value={drawColor}
+                    onChange={(e) => setDrawColor(e.target.value)}
+                    title="Pen color"
+                    className="pen-color-input"
+                  />
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={drawWidth}
+                    onChange={(e) => setDrawWidth(Number(e.target.value))}
+                    title="Pen thickness"
+                    className="pen-thickness-slider"
+                  />
+                  <span className="pen-thickness-label">{drawWidth}px</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="color-picker">
-            <input
-              type="color"
-              value={drawColor}
-              onChange={(e) => setDrawColor(e.target.value)}
-              title="Pen color"
-            />
-          </div>
-
-          <label className="stroke-width-control" title={`Pen thickness: ${drawWidth}px`}>
-            <span className="stroke-width-preview" style={{ width: drawWidth, height: drawWidth, background: drawColor }} />
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-              value={drawWidth}
-              onChange={(e) => setDrawWidth(Number(e.target.value))}
-              aria-label="Pen thickness"
-            />
-            <span className="stroke-width-value">{drawWidth}px</span>
-          </label>
+          <button
+            className="btn-undo"
+            onClick={() => {
+              const lastDrawings = annotations.drawings;
+              if (lastDrawings.length > 0) {
+                onAnnotationsChange({ ...annotations, drawings: lastDrawings.slice(0, -1) });
+              }
+            }}
+            disabled={annotations.drawings.length === 0}
+            title="Undo last stroke"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>
 
           <div className="toolbar-divider" />
 
@@ -334,7 +372,7 @@ export default function PDFViewer({
               <line x1="9" y1="15" x2="12" y2="12" />
               <line x1="15" y1="15" x2="12" y2="12" />
             </svg>
-            {markSchemeInfo ? `Mark Scheme added (${markSchemeTotalPages}p)` : 'Add Mark Scheme'}
+            {markSchemeInfo ? 'Added' : 'Add Mark Scheme'}
           </button>
 
           <div className="settings-container" ref={settingsRef}>
@@ -459,7 +497,7 @@ export default function PDFViewer({
       </div>
 
       <div className="pdf-content">
-        <div className="page-container" ref={containerRef}>
+        <div className="page-container" ref={pageContainerRef}>
           {pageImage && (
             <div
               style={{

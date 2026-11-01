@@ -483,10 +483,19 @@
   white-space: nowrap;
 }
 
+.file-name.clickable {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.file-name.clickable:hover {
+  color: var(--color-text-primary);
+}
+
 .page-indicator {
   font-size: 14px;
   font-weight: 500;
-  min-width: 120px;
+  min-width: 60px;
   text-align: center;
 }
 
@@ -504,15 +513,6 @@
 
 .btn-icon:hover {
   border-color: var(--color-primary);
-  color: var(--color-text-primary);
-}
-
-.btn-rename {
-  padding: 4px;
-  color: var(--color-text-tertiary);
-}
-
-.btn-rename:hover {
   color: var(--color-text-primary);
 }
 
@@ -570,47 +570,76 @@
   color: #111111;
 }
 
-.color-picker input {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: 2px;
-  cursor: pointer;
-}
-
-.stroke-width-control {
+/* Pen options (color + thickness) */
+.pen-control {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 8px;
+}
+
+.pen-options-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  background: var(--color-bg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-.stroke-width-preview {
-  display: inline-block;
-  min-width: 1px;
-  min-height: 1px;
-  max-width: 10px;
-  max-height: 10px;
-  border-radius: 999px;
-  flex-shrink: 0;
+.pen-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
 }
 
-.stroke-width-control input[type="range"] {
-  width: 72px;
+.pen-color-input {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 1px;
+  cursor: pointer;
+  background: none;
+}
+
+.pen-thickness-slider {
+  width: 60px;
+  height: 4px;
   accent-color: var(--color-primary);
   cursor: pointer;
 }
 
-.stroke-width-value {
-  min-width: 28px;
-  font-size: 12px;
+.pen-thickness-label {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--color-text-secondary);
-  text-align: right;
+  min-width: 24px;
+}
+
+/* Undo button */
+.btn-undo {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  transition: all 0.15s;
+}
+
+.btn-undo:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+.btn-undo:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .toolbar-divider {
