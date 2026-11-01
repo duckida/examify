@@ -167,23 +167,23 @@ export default function TextBoxes({
                 title="Delete text box"
                 style={{
                   position: 'absolute',
-                  top: -10,
-                  right: -10,
-                  width: 28,
-                  height: 28,
+                  top: -8,
+                  right: -8,
+                  width: 20,
+                  height: 20,
                   borderRadius: '50%',
-                  border: 'none',
-                  background: '#ef4444',
-                  color: 'white',
-                  fontSize: 16,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg)',
+                  color: 'var(--color-text-muted)',
+                  fontSize: 12,
                   lineHeight: 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  opacity: isSelected ? 1 : 0.6,
+                  opacity: isSelected ? 1 : 0.4,
                   transition: 'opacity 0.15s, transform 0.15s',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                   zIndex: 3,
                 }}
                 onMouseEnter={(e) => {
@@ -191,7 +191,7 @@ export default function TextBoxes({
                   (e.currentTarget as HTMLElement).style.transform = 'scale(1.1)';
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.opacity = isSelected ? '1' : '0.6';
+                  (e.currentTarget as HTMLElement).style.opacity = isSelected ? '1' : '0.4';
                   (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
                 }}
               >
