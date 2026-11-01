@@ -68,6 +68,7 @@ export default function PDFViewer({
   const [pageText, setPageText] = useState('');
   const [toolMode, setToolMode] = useState<ToolMode>('draw');
   const [drawColor, setDrawColor] = useState('#000000');
+  const [drawWidth, setDrawWidth] = useState(3);
   const [zoom, setZoom] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [showMsModal, setShowMsModal] = useState(false);
@@ -305,6 +306,20 @@ export default function PDFViewer({
             />
           </div>
 
+          <label className="stroke-width-control" title={`Pen thickness: ${drawWidth}px`}>
+            <span className="stroke-width-preview" style={{ width: drawWidth, height: drawWidth, background: drawColor }} />
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value={drawWidth}
+              onChange={(e) => setDrawWidth(Number(e.target.value))}
+              aria-label="Pen thickness"
+            />
+            <span className="stroke-width-value">{drawWidth}px</span>
+          </label>
+
           <div className="toolbar-divider" />
 
           <button
@@ -476,6 +491,7 @@ export default function PDFViewer({
                   onDrawingsChange={handleDrawingChange}
                   enabled={toolMode === 'draw' || toolMode === 'erase'}
                   color={drawColor}
+                  strokeWidth={drawWidth}
                   erasing={toolMode === 'erase'}
                 />
                 <TextBoxes

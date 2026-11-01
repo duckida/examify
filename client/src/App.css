@@ -579,6 +579,40 @@
   cursor: pointer;
 }
 
+.stroke-width-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg);
+}
+
+.stroke-width-preview {
+  display: inline-block;
+  min-width: 1px;
+  min-height: 1px;
+  max-width: 10px;
+  max-height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.stroke-width-control input[type="range"] {
+  width: 72px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.stroke-width-value {
+  min-width: 28px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 24px;

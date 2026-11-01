@@ -9,9 +9,10 @@ interface Props {
   enabled: boolean;
   color: string;
   erasing?: boolean;
+  strokeWidth?: number;
 }
 
-const BASE_WIDTH = 3;
+const DEFAULT_WIDTH = 3;
 const MIN_PRESSURE_WIDTH = 0.6;
 const MAX_PRESSURE_WIDTH = 10;
 
@@ -48,10 +49,10 @@ function isEraseGesture(e: React.PointerEvent): boolean {
  * Map stylus pressure (0–1) onto a stroke width. Mouse and touch report a
  * constant pressure, so they keep the base width.
  */
-function widthForPressure(pointerType: string, pressure: number): number {
-  if (pointerType !== 'pen') return BASE_WIDTH;
-  if (pressure <= 0) return BASE_WIDTH;
-  const scaled = BASE_WIDTH * (0.35 + 1.3 * pressure);
+function widthForPressure(pointerType: string, pressure: number, baseWidth: number): number {
+  if (pointerType !== 'pen') return baseWidth;
+  if (pressure <= 0) return baseWidth;
+  const scaled = baseWidth * (0.35 + 1.3 * pressure);
   return Math.min(MAX_PRESSURE_WIDTH, Math.max(MIN_PRESSURE_WIDTH, scaled));
 }
 
@@ -63,7 +64,7 @@ function strokeSegment(
 ) {
   ctx.beginPath();
   ctx.strokeStyle = color;
-  ctx.lineWidth = to.w ?? from.w ?? BASE_WIDTH;
+  ctx.lineWidth = to.w ?? from.w ?? DEFAULT_WIDTH;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.moveTo(from.x, from.y);
@@ -87,7 +88,7 @@ function redrawAll(
 }
 
 export default function DrawingCanvas({
-  width, height, drawings, onDrawingsChange, enabled, color, erasing,
+  width, height, drawings, onDrawingsChange, enabled, color, erasing, strokeWidth = DEFAULT_WIDTH,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentPath = useRef<DrawingPoint[]>([]);
@@ -120,9 +121,9 @@ export default function DrawingCanvas({
     return {
       x: (clientX - rect.left) * (width / rect.width),
       y: (clientY - rect.top) * (height / rect.height),
-      w: widthForPressure(pointerType, pressure),
+      w: widthForPressure(pointerType, pressure, strokeWidth),
     };
-  }, [width, height]);
+  }, [width, height, strokeWidth]);
 
   const eraseAt = useCallback((x: number, y: number) => {
     const current = drawingsRef.current;
@@ -242,11 +243,11 @@ export default function DrawingCanvas({
       id: `draw-${Date.now()}-${pathId.current++}`,
       points,
       color,
-      width: points[0].w ?? BASE_WIDTH,
+      width: strokeWidth,
     };
     onDrawingsChange([...drawingsRef.current, newPath]);
     currentPath.current = [];
-  }, [color, width, height, onDrawingsChange]);
+  }, [color, strokeWidth, width, height, onDrawingsChange]);
 
   const handleUndo = useCallback(() => {
     if (drawings.length === 0) return;
