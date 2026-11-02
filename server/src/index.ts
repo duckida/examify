@@ -79,6 +79,32 @@ function getModel(provider?: string, hackClubApiKey?: string, modelName?: string
   return google(FREE_MODEL);
 }
 
+// Transient failures (502/503/504, rate limits, dropped connections) are worth
+// retrying; client errors (bad API key, unknown model) are not.
+function isRetryableError(error: any): boolean {
+  if (error?.name === 'AbortError') return false;
+  const status = error?.statusCode;
+  if (typeof status === 'number') return status === 408 || status === 429 || status >= 500;
+  return true; // network-level failure (connection reset, fetch failed, ...)
+}
+
+function describeError(error: any): string {
+  const status = typeof error?.statusCode === 'number' ? ` [HTTP ${error.statusCode}]` : '';
+  return `${error?.message || String(error)}${status}`;
+}
+
+// Pull the upstream's own error detail out of the response body, if present.
+function upstreamDetail(error: any): string | undefined {
+  const raw = error?.responseBody;
+  if (typeof raw !== 'string') return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    const detail = parsed?.error?.message ?? parsed?.error;
+    if (typeof detail === 'string' && detail && detail !== error.message) return detail;
+  } catch { /* not JSON */ }
+  return undefined;
+}
+
 async function generateTextWithRetry(params: Parameters<typeof generateText>[0], retries = MAX_RETRIES): Promise<Awaited<ReturnType<typeof generateText>>> {
   let lastError: Error | undefined;
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -86,8 +112,8 @@ async function generateTextWithRetry(params: Parameters<typeof generateText>[0],
       return await generateText(params);
     } catch (error: any) {
       lastError = error;
-      if (error.name === 'AbortError') throw error;
-      console.error(`LLM call failed (attempt ${attempt + 1}/${retries}):`, error.message);
+      if (!isRetryableError(error)) throw error;
+      console.error(`LLM call failed (attempt ${attempt + 1}/${retries}):`, describeError(error));
       if (attempt < retries - 1) {
         await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
       }
@@ -113,7 +139,7 @@ async function generateJsonWithRetry<T>(
       console.error(`LLM response did not contain valid JSON (attempt ${attempt + 1}/${retries})`);
     } catch (error: any) {
       lastError = error;
-      if (error.name === 'AbortError') throw error;
+      if (!isRetryableError(error)) throw error;
     }
     if (attempt < retries - 1) {
       await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
@@ -175,9 +201,24 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
     clearTimeout(timeout);
     res.json({ text: result.text.trim() });
   } catch (error: any) {
-    console.error('Mark scheme parsing error:', error);
-    const message = error.name === 'AbortError' ? 'Mark scheme parsing timed out' : (error.message || 'Failed to parse mark scheme');
-    res.status(500).json({ error: message });
+    const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : undefined;
+    console.error(`Mark scheme parsing error${statusCode ? ` (HTTP ${statusCode})` : ''}:`, error);
+    if (error.name === 'AbortError') {
+      res.status(500).json({ error: 'Mark scheme parsing timed out' });
+      return;
+    }
+    let message: string;
+    if (statusCode === 429) {
+      message = 'AI service rate limit reached (429). Wait a moment, then try again.';
+    } else if (statusCode && statusCode >= 500) {
+      message = `The AI service returned HTTP ${statusCode} (${error.message || 'error'}). This is usually temporary — please try again.`;
+    } else {
+      const detail = upstreamDetail(error);
+      message = detail
+        ? `AI service rejected the request${statusCode ? ` (HTTP ${statusCode})` : ''}: ${detail}`
+        : (error.message || 'Failed to parse mark scheme');
+    }
+    res.status(500).json({ error: message, statusCode });
   }
 });
 

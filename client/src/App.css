@@ -768,6 +768,10 @@
 }
 
 .ms-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 10px;
   background: var(--color-warning-light);
   border: 1px solid var(--color-warning);
@@ -775,6 +779,23 @@
   font-size: 11px;
   color: var(--color-text-primary);
   line-height: 1.4;
+}
+
+.ms-retry-btn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-xl);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ms-retry-btn:hover {
+  background: var(--color-bg-hover);
 }
 
 /* PDF Content Area */

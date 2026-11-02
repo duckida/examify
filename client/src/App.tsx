@@ -262,8 +262,9 @@ export default function App() {
           const err = JSON.parse(text);
           msg = err.error || msg;
         } catch {
-          // Response wasn't JSON (e.g., HTML error page from proxy)
-          if (text) msg = text;
+          // Non-JSON error body (e.g. "Bad Gateway" from the Vite proxy when the
+          // backend is down or restarting) — surface something actionable.
+          msg = `Couldn't reach the app server (HTTP ${res.status}). It may be restarting — try again in a moment.`;
         }
         setParseError(msg);
         console.error('Failed to parse mark scheme:', msg);
@@ -279,6 +280,10 @@ export default function App() {
       setParsingMarkScheme(false);
     }
   }, [aiProvider, hackClubApiKey, parsingModel]);
+
+  const retryParse = useCallback(() => {
+    if (markSchemeInfo) triggerParse(markSchemeInfo);
+  }, [markSchemeInfo, triggerParse]);
 
   const handleUploadComplete = useCallback((info: PDFInfo, pages: number) => {
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
@@ -531,6 +536,7 @@ export default function App() {
       parsedMarkSchemeText={parsedMarkSchemeText}
       parsingMarkScheme={parsingMarkScheme}
       parseError={parseError}
+      onRetryParse={retryParse}
       darkMode={darkMode}
       onDarkModeChange={handleDarkModeChange}
     />

@@ -16,6 +16,7 @@ interface Props {
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
   parseError: string | null;
+  onRetryParse: () => void;
   pdfData?: string;
   pageDimensions: { width: number; height: number };
   drawings: DrawingPath[];
@@ -26,7 +27,7 @@ export default function MarkPanel({
   onMark, marking, markError, markResult, marks,
   currentPage, hasAnnotations,
   markSchemeInfo, markSchemeTotalPages,
-  parsedMarkSchemeText, parsingMarkScheme, parseError,
+  parsedMarkSchemeText, parsingMarkScheme, parseError, onRetryParse,
   pdfData, pageDimensions, drawings, textBoxes,
 }: Props) {
   const [context, setContext] = useState('');
@@ -160,7 +161,13 @@ export default function MarkPanel({
 
         {!parsedMarkSchemeText && markSchemeInfo && !parsingMarkScheme && (
           <div className="ms-warning">
-            Mark scheme not parsed — marking will run without it. Click MS to re-upload.
+            <span>
+              Mark scheme not parsed — marking will run without it.
+              {parseError ? '' : ' Click MS to re-upload.'}
+            </span>
+            <button type="button" className="ms-retry-btn" onClick={onRetryParse}>
+              Retry parsing
+            </button>
           </div>
         )}
 

@@ -40,6 +40,7 @@ interface Props {
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
   parseError: string | null;
+  onRetryParse: () => void;
   enableReasoning: boolean;
   onEnableReasoningChange: (enabled: boolean) => void;
   darkMode: 'light' | 'dark';
@@ -59,7 +60,7 @@ export default function PDFViewer({
   onMark, onReset, onExport, onRename, marking, markError, markResult, marks,
   aiProvider, hackClubApiKey, onAiProviderChange, onHackClubApiKeyChange,
   markingModel, parsingModel, onMarkingModelChange, onParsingModelChange,
-  parsedMarkSchemeText, parsingMarkScheme, parseError,
+  parsedMarkSchemeText, parsingMarkScheme, parseError, onRetryParse,
   enableReasoning, onEnableReasoningChange,
   darkMode, onDarkModeChange,
 }: Props) {
@@ -565,6 +566,7 @@ export default function PDFViewer({
           parsedMarkSchemeText={parsedMarkSchemeText}
           parsingMarkScheme={parsingMarkScheme}
           parseError={parseError}
+          onRetryParse={onRetryParse}
           pdfData={pdfInfo.data}
           pageDimensions={pageDimensions}
           drawings={annotations.drawings}
