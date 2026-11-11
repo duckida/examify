@@ -4,7 +4,6 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { google, type GoogleLanguageModelOptions } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { pdf } from 'pdf-to-img';
 
@@ -62,10 +61,12 @@ app.post('/api/render-page', async (req, res) => {
   }
 });
 
-const FREE_MODEL = 'gemini-flash-lite-latest';
 const HACKCLUB_MODEL = 'deepseek/deepseek-v4.1-flash';
 const HACKCLUB_PARSING_MODEL = 'google/gemini-3.5-flash-lite';
+const BYLD_BASE_URL = process.env.BYLD_BASE_URL || 'https://byld.cc/v1';
+const BYLD_MODEL = process.env.BYLD_MODEL || 'deepseek-v4.1';
 const MAX_RETRIES = 3;
+const MAX_PARSE_PAGES = 50;
 
 function getModel(provider?: string, hackClubApiKey?: string, modelName?: string, purpose?: 'marking' | 'parsing') {
   if (provider === 'hackclub' && hackClubApiKey) {
@@ -76,7 +77,29 @@ function getModel(provider?: string, hackClubApiKey?: string, modelName?: string
     const defaultModel = purpose === 'parsing' ? HACKCLUB_PARSING_MODEL : HACKCLUB_MODEL;
     return hackclub(modelName || process.env.LLM_MODEL || defaultModel);
   }
-  return google(FREE_MODEL);
+  const byld = createOpenRouter({
+    apiKey: process.env.BYLD_API_KEY,
+    baseUrl: BYLD_BASE_URL,
+  });
+  return byld(process.env.LLM_MODEL || BYLD_MODEL);
+}
+
+async function renderPdfPagesToImages(pdfBase64: string): Promise<string[]> {
+  const doc = await pdf(`data:application/pdf;base64,${pdfBase64}`, { scale: 1.5 });
+  try {
+    const pageCount = Math.min(doc.length, MAX_PARSE_PAGES);
+    if (doc.length > MAX_PARSE_PAGES) {
+      console.warn(`Mark scheme has ${doc.length} pages; parsing the first ${MAX_PARSE_PAGES}.`);
+    }
+    const images: string[] = [];
+    for (let page = 1; page <= pageCount; page++) {
+      const buffer = await doc.getPage(page);
+      images.push(buffer.toString('base64'));
+    }
+    return images;
+  } finally {
+    await doc.destroy();
+  }
 }
 
 // Transient failures (502/503/504, rate limits, dropped connections) are worth
@@ -169,7 +192,11 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
     }
 
     const usingHackClub = aiProvider === 'hackclub' && hackClubApiKey;
-    if (!usingHackClub && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    if (aiProvider === 'hackclub' && !hackClubApiKey) {
+      res.status(400).json({ error: 'Hack Club AI API key required.' });
+      return;
+    }
+    if (!usingHackClub && !process.env.BYLD_API_KEY) {
       res.status(500).json({ error: 'No AI API key configured on the server.' });
       return;
     }
@@ -178,6 +205,12 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
     const timeout = setTimeout(() => controller.abort(), 120000);
 
     const llmModel = getModel(aiProvider, hackClubApiKey, model, 'parsing');
+
+    const pdfContent: any[] = usingHackClub
+      ? [{ type: 'file' as const, data: Buffer.from(markSchemePdf, 'base64'), mediaType: 'application/pdf' }]
+      : (await renderPdfPagesToImages(markSchemePdf)).map(
+          (image) => ({ type: 'image' as const, image: `data:image/png;base64,${image}` }),
+        );
 
     const result = await generateTextWithRetry({
       model: llmModel,
@@ -189,8 +222,8 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
         {
           role: 'user',
           content: [
-            { type: 'text' as const, text: 'Extract all text from this mark scheme PDF.' },
-            { type: 'file' as const, data: Buffer.from(markSchemePdf, 'base64'), mediaType: 'application/pdf' },
+            ...pdfContent,
+            { type: 'text' as const, text: usingHackClub ? 'Extract all text from this mark scheme PDF.' : 'Extract all text from these mark scheme page images, in order.' },
           ],
         },
       ],
@@ -231,7 +264,11 @@ app.post('/api/mark', async (req, res) => {
     }
 
     const usingHackClub = aiProvider === 'hackclub' && hackClubApiKey;
-    if (!usingHackClub && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    if (aiProvider === 'hackclub' && !hackClubApiKey) {
+      res.status(400).json({ error: 'Hack Club AI API key required.' });
+      return;
+    }
+    if (!usingHackClub && !process.env.BYLD_API_KEY) {
       res.status(500).json({ error: 'No AI API key configured on the server. Select "Free endpoint" or provide a Hack Club AI API key.' });
       return;
     }
@@ -294,13 +331,7 @@ Return JSON only. Use markdown for formatting in the text fields.
               },
             },
           }
-        : {
-            providerOptions: {
-              google: {
-                thinkingConfig: { thinkingLevel: 'medium' },
-              } satisfies GoogleLanguageModelOptions,
-            },
-          }),
+        : {}),
     }, extractJson);
 
     clearTimeout(timeout);
