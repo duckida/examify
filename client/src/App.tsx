@@ -493,7 +493,6 @@ export default function App() {
     <PDFViewer
       pdfInfo={pdfInfo}
       markSchemeInfo={markSchemeInfo}
-      markSchemeTotalPages={markSchemeTotalPages}
       onMarkSchemeUpload={handleMarkSchemeUpload}
       currentPage={currentPage}
       totalPages={totalPages}

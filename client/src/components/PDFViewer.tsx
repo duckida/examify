@@ -14,7 +14,6 @@ const pdfjsWorker = (async () => {
 interface Props {
   pdfInfo: PDFInfo;
   markSchemeInfo: PDFInfo | null;
-  markSchemeTotalPages: number;
   onMarkSchemeUpload: (info: PDFInfo, totalPages: number) => void;
   currentPage: number;
   totalPages: number;
@@ -54,7 +53,7 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3.0;
 
 export default function PDFViewer({
-  pdfInfo, markSchemeInfo, markSchemeTotalPages, onMarkSchemeUpload,
+  pdfInfo, markSchemeInfo, onMarkSchemeUpload,
   currentPage, totalPages, onPageChange,
   annotations, onAnnotationsChange,
   onMark, onReset, onExport, onRename, marking, markError, markResult, marks,
@@ -562,7 +561,6 @@ export default function PDFViewer({
           currentPage={currentPage}
           hasAnnotations={annotations.drawings.length > 0 || annotations.textBoxes.length > 0}
           markSchemeInfo={markSchemeInfo}
-          markSchemeTotalPages={markSchemeTotalPages}
           parsedMarkSchemeText={parsedMarkSchemeText}
           parsingMarkScheme={parsingMarkScheme}
           parseError={parseError}

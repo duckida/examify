@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { MarkResult, MarkRecord, PDFInfo, DrawingPath, TextBoxData } from '../types';
 import Markdown from 'react-markdown';
 import ScoreSection from './ScoreSection';
+import MarkSchemeViewer from './MarkSchemeViewer';
 
 interface Props {
   onMark: (imageBase64: string, questionContext?: string) => void;
@@ -12,7 +13,6 @@ interface Props {
   currentPage: number;
   hasAnnotations: boolean;
   markSchemeInfo: PDFInfo | null;
-  markSchemeTotalPages: number;
   parsedMarkSchemeText: string | null;
   parsingMarkScheme: boolean;
   parseError: string | null;
@@ -29,12 +29,13 @@ type PanelTab = 'mark' | 'scheme';
 export default function MarkPanel({
   onMark, marking, markError, markResult, marks,
   currentPage, hasAnnotations,
-  markSchemeInfo, markSchemeTotalPages,
+  markSchemeInfo,
   parsedMarkSchemeText, parsingMarkScheme, parseError, onRetryParse, onAddMarkScheme,
   pdfData, pageDimensions, drawings, textBoxes,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('mark');
   const [showMarkScheme, setShowMarkScheme] = useState(false);
+  const [viewerMounted, setViewerMounted] = useState(false);
   const [context, setContext] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -282,45 +283,36 @@ export default function MarkPanel({
         <div className="mark-tab-content mark-scheme-tab">
           {markSchemeInfo ? (
             <>
-              <div className="ms-view-header">
-                <div className="ms-view-meta">
-                  <span className="ms-view-filename" title={markSchemeInfo.filename}>
-                    {markSchemeInfo.filename}
-                  </span>
-                  {markSchemeTotalPages > 0 && (
-                    <span className="ms-view-pages">{markSchemeTotalPages} pages</span>
+              <button
+                type="button"
+                className={`btn-ms-toggle ${showMarkScheme ? 'active' : ''}`}
+                onClick={() => {
+                  setShowMarkScheme(v => !v);
+                  setViewerMounted(true);
+                }}
+                aria-expanded={showMarkScheme}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {showMarkScheme ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
                   )}
-                </div>
-                <button
-                  type="button"
-                  className={`btn-ms-toggle ${showMarkScheme ? 'active' : ''}`}
-                  onClick={() => setShowMarkScheme(v => !v)}
-                  aria-expanded={showMarkScheme}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {showMarkScheme ? (
-                      <>
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </>
-                    ) : (
-                      <>
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </>
-                    )}
-                  </svg>
-                  {showMarkScheme ? 'Hide' : 'Show'} mark scheme
-                </button>
-              </div>
+                </svg>
+                {showMarkScheme ? 'Hide' : 'Show'} mark scheme
+              </button>
 
-              {showMarkScheme && (
-                <iframe
-                  src={markSchemeInfo.url}
-                  title="Mark scheme PDF"
-                  className="ms-pdf-frame"
-                />
+              {viewerMounted && (
+                <div hidden={!showMarkScheme}>
+                  <MarkSchemeViewer url={markSchemeInfo.url} />
+                </div>
               )}
             </>
           ) : (
