@@ -69,7 +69,7 @@ export default function PDFViewer({
   const [pageText, setPageText] = useState('');
   const [toolMode, setToolMode] = useState<ToolMode>('draw');
   const [drawColor, setDrawColor] = useState('#000000');
-  const [drawWidth, setDrawWidth] = useState(3);
+  const [drawWidth, setDrawWidth] = useState(2);
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
@@ -567,6 +567,7 @@ export default function PDFViewer({
           parsingMarkScheme={parsingMarkScheme}
           parseError={parseError}
           onRetryParse={onRetryParse}
+          onAddMarkScheme={() => setShowMsModal(true)}
           pdfData={pdfInfo.data}
           pageDimensions={pageDimensions}
           drawings={annotations.drawings}

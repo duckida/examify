@@ -12,7 +12,7 @@ interface Props {
   strokeWidth?: number;
 }
 
-const DEFAULT_WIDTH = 3;
+const DEFAULT_WIDTH = 2;
 const MIN_PRESSURE_WIDTH = 0.6;
 const MAX_PRESSURE_WIDTH = 10;
 
