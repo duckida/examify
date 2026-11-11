@@ -65,6 +65,13 @@ const HACKCLUB_MODEL = 'deepseek/deepseek-v4.1-flash';
 const HACKCLUB_PARSING_MODEL = 'google/gemini-3.5-flash-lite';
 const BYLD_BASE_URL = process.env.BYLD_BASE_URL || 'https://byld.cc/v1';
 const BYLD_MODEL = process.env.BYLD_MODEL || 'deepseek-v4.1';
+const REASONING_EFFORTS = ['xhigh', 'high', 'medium', 'low', 'minimal', 'none'] as const;
+type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+const BYLD_REASONING_EFFORT: ReasoningEffort = REASONING_EFFORTS.includes(
+  (process.env.BYLD_REASONING_EFFORT || '') as ReasoningEffort,
+)
+  ? (process.env.BYLD_REASONING_EFFORT as ReasoningEffort)
+  : 'low';
 const MAX_RETRIES = 3;
 const MAX_PARSE_PAGES = 50;
 
@@ -229,6 +236,15 @@ app.post('/api/parse-mark-scheme', async (req, res) => {
       ],
       maxOutputTokens: 16000,
       abortSignal: controller.signal,
+      ...(usingHackClub
+        ? {}
+        : {
+            providerOptions: {
+              openrouter: {
+                reasoning: { enabled: true, effort: BYLD_REASONING_EFFORT },
+              },
+            },
+          }),
     });
 
     clearTimeout(timeout);
@@ -331,7 +347,13 @@ Return JSON only. Use markdown for formatting in the text fields.
               },
             },
           }
-        : {}),
+        : {
+            providerOptions: {
+              openrouter: {
+                reasoning: { enabled: enableReasoning !== false, effort: BYLD_REASONING_EFFORT },
+              },
+            },
+          }),
     }, extractJson);
 
     clearTimeout(timeout);
